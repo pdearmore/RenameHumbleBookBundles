@@ -1,2 +1,206 @@
 # RenameHumbleBookBundles
+
 Windows C# command line executable to give Humble book bundle files better filenames.
+Builds to a single self-contained `hbrename.exe`.
+
+Humble's DRM-free downloads arrive lowercased and run together, with download ids and
+export artefacts glued on. This turns them back into something readable — and into
+something Komga, Kavita, ComicRack and Calibre can actually match.
+
+```
+  chillingadventuresofsabrina_vol1.cbz    ->  Chilling Adventures of Sabrina Vol. 01.cbz
+  x-omanowar2017_vol1.cbz                 ->  X-O Manowar Vol. 01 (2017).cbz
+  LockeandKeyv1_1414530092.cbz            ->  Locke & Key Vol. 01.cbz
+  warmother.cbz                           ->  War Mother.cbz
+  ptsdradio_vol1_ebook.cbz                ->  PTSD Radio Vol. 01.cbz
+  4001a_d_deluxeedition.cbz               ->  4001 A.D. (Deluxe Edition).cbz
+  humbleexclusive_armyofdarknessoneshot.cbz -> Army of Darkness (Humble Exclusive, One-Shot).cbz
+  Satellite Sam, Vol. 1 TP - Matt Fraction.mobi -> Satellite Sam Vol. 01 (2014) (Trade Paperback).mobi
+  Predator - Hunters (2018) (digital) (The Magicians-Empire).cbr -> Predator - Hunters (2018).cbr
+```
+
+Nothing is renamed until you have seen the complete before/after list and said yes,
+and every run can be undone.
+
+## Getting it
+
+Build a standalone `hbrename.exe` — no .NET install needed to run the result:
+
+```powershell
+.\build.ps1
+```
+
+The executable lands in `.\publish\hbrename.exe`. Requires the .NET 10 SDK to build.
+
+## Using it
+
+```powershell
+hbrename                                  # asks which folder
+hbrename "D:\Comics\Humble Bundle"
+hbrename D:\Comics --recurse --online
+hbrename D:\Comics --dry-run              # preview and stop
+hbrename D:\Comics --undo                 # put the last run back
+```
+
+The flow is always the same: scan, show every file's current and proposed name,
+ask, apply, then offer to revert immediately.
+
+### Options
+
+| Option | What it does |
+| --- | --- |
+| `-t`, `--template <fmt>` | Name layout. See [Templates](#templates). |
+| `-r`, `--recurse` | Include subfolders. |
+| `-o`, `--online` | Consult online catalogues for missing or clipped titles. |
+| `--confidence <n>` | Minimum match confidence, 0–1. Default `0.72`. |
+| `--comicvine-key <k>` | Comic Vine API key. |
+| `--google-key <k>` | Google Books API key. |
+| `--no-metadata` | Do not read metadata from inside files. |
+| `--hydrate` | Download cloud-only files so their metadata can be read. |
+| `-e`, `--ext <list>` | Extensions to include, e.g. `--ext cbz,cbr,pdf`. |
+| `--all-files` | Consider every file, whatever its extension. |
+| `--lexicon <path>` | Extra title lexicon to merge in. |
+| `-y`, `--yes` | Apply without asking. For scripts. |
+| `-n`, `--dry-run` | Show the preview and stop. |
+| `-u`, `--undo` | Revert the last run in this folder. |
+
+## How it works
+
+Evidence is layered cheapest-first, and the most trustworthy source wins.
+
+**1. The filename.** Always produces a guess. Download ids (`_1414530092`), scene tags
+(`(digital)`, `(The Magicians-Empire)`) and export noise (`_ebook`) are stripped;
+volume, issue, book, year and edition markers are pulled out; and run-together text is
+split back into words.
+
+Splitting uses [Norvig's Viterbi segmentation](https://norvig.com/ngrams/) over an
+embedded 80,000-word frequency corpus. Pure word frequency is not always enough —
+`warmother` scores better as *warm other* than *war mother*, because "other" is far
+more common than "mother" — so a curated lexicon of comic titles and proper nouns
+overrides the statistics where they go wrong.
+
+Casing is headline style: small words stay lowercase mid-title, acronyms are shouted
+(`PTSD Radio`), compounds capitalise both halves (`Demi-Human`), and roman numerals are
+detected but only when the letters do not also spell a real word — otherwise `mix`
+would come out as `MIX`.
+
+**2. Metadata inside the file.** `ComicInfo.xml` from CBZ/CBR/CB7, EXTH records from
+MOBI/AZW3, the OPF package from EPUB, and the document information dictionary or XMP
+packet from PDF. Formats are identified by their leading bytes, not their extension,
+because plenty of files named `.cbr` are really ZIPs.
+
+An embedded title is itself re-parsed, since publishers write things like
+`Nailbiter Vol. 1` into the title field and that still needs splitting into a series
+and a volume. Structural details the metadata lacks (usually the volume number) are
+taken from the filename — but title *fragments* never are, because those are exactly
+what a truncating exporter mangled.
+
+**3. Online catalogues**, only with `--online`, and only when the local evidence is
+weak — a title that looks cut off, no title at all, or a known ISBN. Comic Vine is
+tried first when a key is present, then Open Library, then Google Books. A candidate
+must clear a confidence floor or it is discarded: leaving a filename-derived guess in
+place is much better than confidently applying a wrong title to a hundred files.
+
+Truncation is the case this exists for. Calibre clips titles to roughly 30 characters,
+so `Star Wars Omnibus Rise of the S` is scored against candidates by prefix rather
+than word overlap, which is what lets it recover `...Rise of the Sith`.
+
+### API keys
+
+Both keyless providers work without configuration, but Google Books throttles by
+address and Comic Vine needs a free key. Either can be supplied by flag or environment:
+
+```powershell
+$env:HBRENAME_COMICVINE_KEY    = 'your-key'   # much better for comics specifically
+$env:HBRENAME_GOOGLE_BOOKS_KEY = 'your-key'
+```
+
+Responses are cached in `%LOCALAPPDATA%\hbrename\lookup-cache.json`, including
+misses, so a second run over the same folder does not re-ask.
+
+## Templates
+
+```
+{Series}[ Vol. {Volume:00}][ Book {Book}][ #{Issue}][ - {Subtitle}][ ({Year})][ ({Editions})]
+```
+
+Tokens: `Series` `Title` `Subtitle` `Volume` `Issue` `Book` `Year` `Author`
+`Publisher` `Editions`. A numeric format may follow a colon — `{Volume:00}`.
+
+A `[bracketed]` section disappears entirely when any token inside it is empty, which
+is what lets one template serve files with a volume, files with an issue, and files
+with neither.
+
+```powershell
+hbrename D:\Comics --template "{Series}[ v{Volume:00}][ ({Year})]"
+hbrename D:\Comics --template "{Author} - {Series}[ ({Year})]"
+```
+
+## Teaching it new titles
+
+When a title is guessed wrong, correct it in `%APPDATA%\hbrename\lexicon.txt` rather
+than editing the source. Entries there are merged over the built-in lexicon.
+
+```ini
+[titles]
+# key = the title with spaces and punctuation removed, lowercased
+mynewseries = My New Series
+xomanowar = X-O Manowar
+
+[words]
+# proper nouns to teach the word splitter
+manowar
+
+[uppercase]
+# render these in caps
+bprd
+
+[junk]
+# tokens to discard wholesale
+mybundlename
+```
+
+See [`src/HumbleRename/Data/lexicon.txt`](src/HumbleRename/Data/lexicon.txt) for the
+full built-in set.
+
+## Undoing
+
+Applying writes a hidden `.hbrename-undo.json` into the folder. The tool offers to
+revert immediately after a run, and `--undo` works later:
+
+```powershell
+hbrename "D:\Comics\Humble Bundle" --undo
+```
+
+## Supported formats
+
+`.cbz` `.cbr` `.cb7` `.cbt` `.pdf` `.epub` `.mobi` `.azw3` `.zip` `.rar`
+
+Use `--ext` to narrow that list or `--all-files` to ignore it.
+
+Cloud-only OneDrive and Dropbox placeholder files are detected and their metadata is
+skipped rather than triggering a multi-gigabyte download; pass `--hydrate` if you want
+them fetched. Their names are still fixed either way.
+
+## Development
+
+```powershell
+dotnet test                    # 124 tests
+dotnet run --project src\HumbleRename -- D:\Comics --dry-run
+.\build.ps1 -SkipTests
+```
+
+Layout:
+
+| Path | Contents |
+| --- | --- |
+| `src/HumbleRename/Naming` | Word segmentation, title casing, filename parsing |
+| `src/HumbleRename/Metadata` | Format sniffing and per-format metadata readers |
+| `src/HumbleRename/Lookup` | Catalogue providers, match scoring, response cache |
+| `src/HumbleRename/Renaming` | Templates, path safety, planning, apply/undo |
+| `src/HumbleRename/Cli` | Argument parsing and terminal output |
+| `src/HumbleRename/Data` | Embedded word corpus and lexicon |
+
+## Licence
+
+Public domain — see [LICENSE](LICENSE).

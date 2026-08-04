@@ -1,0 +1,58 @@
+## .NET / Visual Studio
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Bb]uild[Ll]og.*
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+*.binlog
+
+## Publish output
+publish/
+dist/
+*.publishproj
+PublishScripts/
+
+## Test results
+[Tt]est[Rr]esult*/
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+coverage*.info
+
+## NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!packages/build/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## Rider / JetBrains
+.idea/
+*.sln.iml
+
+## OS cruft
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+## hbrename runtime state — never commit a user's rename history or lookup cache
+*.hbrename-undo.json
+.hbrename/
+lookup-cache.json
