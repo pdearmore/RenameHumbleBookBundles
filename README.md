@@ -141,6 +141,12 @@ and a volume. Structural details the metadata lacks (usually the volume number) 
 taken from the filename — but title *fragments* never are, because those are exactly
 what a truncating exporter mangled.
 
+Metadata is not trusted blindly. PDFs in particular ship production artefacts in the
+title field — one Humble file's `/Title` is literally `Print`, and another reads
+`Neverwhere AHE Final Text` on a file that is actually *Neverwear*. An embedded title
+that bears no resemblance to the filename is reported and ignored rather than applied,
+since renaming a correctly named file after a different book is the worst outcome here.
+
 **3. Online catalogues**, only with `--online`, and only when the local evidence is
 weak — a title that looks cut off, no title at all, or a known ISBN. Comic Vine is
 tried first when a key is present, then Open Library, then Google Books. A candidate
@@ -192,6 +198,11 @@ than editing the source. Entries there are merged over the built-in lexicon.
 # key = the title with spaces and punctuation removed, lowercased
 mynewseries = My New Series
 xomanowar = X-O Manowar
+
+[authors]
+# lets the parser peel a name off the front of every file in an author bundle,
+# including the possessive: "neilgaimanstrollbridge" -> Neil Gaiman's Troll Bridge
+neilgaiman = Neil Gaiman
 
 [words]
 # proper nouns to teach the word splitter

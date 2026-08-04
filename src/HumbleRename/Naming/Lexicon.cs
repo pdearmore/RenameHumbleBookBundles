@@ -27,6 +27,16 @@ public sealed class Lexicon
     /// <summary>Edition marker key to rendered form.</summary>
     public Dictionary<string, string> Editions { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Despaced author key to properly formatted name.</summary>
+    public Dictionary<string, string> Authors { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Author keys ordered longest first, so "briankvaughan" is tested before any
+    /// shorter name that happens to be a prefix of it.
+    /// </summary>
+    public IEnumerable<KeyValuePair<string, string>> AuthorsByLength =>
+        Authors.OrderByDescending(static a => a.Key.Length);
+
     /// <summary>
     /// Normalises a title to its lookup key: lowercase, letters and digits only.
     /// "X-O Manowar" and "xomanowar" therefore collapse to the same key.
@@ -115,6 +125,9 @@ public sealed class Lexicon
                     break;
                 case "editions":
                     AddPair(line, static (self, k, v) => self.Editions[Key(k)] = v, this);
+                    break;
+                case "authors":
+                    AddPair(line, static (self, k, v) => self.Authors[Key(k)] = v, this);
                     break;
                 case "words":
                     Words.Add(line.ToLowerInvariant());

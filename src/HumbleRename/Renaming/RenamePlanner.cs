@@ -16,6 +16,14 @@ namespace HumbleRename.Renaming;
 /// </remarks>
 public sealed class RenamePlanner
 {
+    /// <summary>
+    /// How closely an embedded title must resemble the filename before it is trusted.
+    /// Set low enough that a subtitle the filename omits still passes ("Angels and
+    /// Visitations" vs "Angels and Visitations: A Miscellany"), high enough that an
+    /// unrelated production string does not.
+    /// </summary>
+    private const double MinimumMetadataAgreement = 0.45;
+
     private readonly NamingEngine _engine;
     private readonly MetadataExtractor _extractor;
     private readonly LookupService? _lookup;
@@ -204,6 +212,21 @@ public sealed class RenamePlanner
             return fromFilename;
         }
 
+        // Embedded metadata is normally the better source, but PDFs routinely carry a
+        // production artefact in the title field — "Print", "AHE Final Text" — and one
+        // of those applied blindly renames a correctly named file after a different
+        // book. Require the two to at least describe the same work.
+        var filenameTitle = fromFilename.Title ?? fromFilename.Series;
+        if (!string.IsNullOrWhiteSpace(filenameTitle))
+        {
+            var agreement = TitleSimilarity.Compare(filenameTitle, embedded.Title!);
+            if (agreement < MinimumMetadataAgreement)
+            {
+                notes.Add($"ignored file metadata \"{Ellipsis(embedded.Title!)}\", it disagrees with the filename");
+                return fromFilename;
+            }
+        }
+
         var structured = _engine.Parser.Parse(embedded.Title, embedded.Author);
 
         var merged = structured with
@@ -223,6 +246,10 @@ public sealed class RenamePlanner
         notes.Add("title from file metadata");
         return merged;
     }
+
+    /// <summary>Shortens a value for display in a preview note.</summary>
+    private static string Ellipsis(string value, int max = 40) =>
+        value.Length <= max ? value : value[..(max - 1)] + "…";
 
     /// <summary>
     /// True when the local evidence is weak enough to justify a network round trip.

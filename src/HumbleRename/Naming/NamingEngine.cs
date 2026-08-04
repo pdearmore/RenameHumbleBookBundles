@@ -32,7 +32,22 @@ public sealed class NamingEngine
     {
         var lexicon = Lexicon.Load(userLexiconPath);
         var corpus = LoadCorpus();
-        var segmenter = new WordSegmenter(corpus, lexicon.Words);
+
+        // Author surnames are proper nouns the general corpus has never seen, so feed
+        // each part of every listed name to the segmenter alongside the domain words.
+        var vocabulary = new HashSet<string>(lexicon.Words, StringComparer.OrdinalIgnoreCase);
+        foreach (var name in lexicon.Authors.Values)
+        {
+            foreach (var part in name.Split([' ', '.', '-'], StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (part.Length > 1)
+                {
+                    vocabulary.Add(part.ToLowerInvariant());
+                }
+            }
+        }
+
+        var segmenter = new WordSegmenter(corpus, vocabulary);
         var caser = new TitleCaser(lexicon, segmenter);
         var parser = new FilenameParser(lexicon, segmenter, caser);
         return new NamingEngine(lexicon, segmenter, caser, parser);

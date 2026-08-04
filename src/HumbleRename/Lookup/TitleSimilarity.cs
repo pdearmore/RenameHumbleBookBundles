@@ -46,6 +46,40 @@ public static class TitleSimilarity
     }
 
     /// <summary>
+    /// Plain similarity of two titles in [0,1], with no author signal involved.
+    /// </summary>
+    /// <remarks>
+    /// Used to decide whether a file's embedded metadata is even describing the same
+    /// work as its filename. PDF producers leave things like "Print" or
+    /// "AHE Final Text" in the title field, and applying those would rename a
+    /// correctly named file after a different book.
+    /// </remarks>
+    public static double Compare(string left, string right)
+    {
+        var a = Normalize(left);
+        var b = Normalize(right);
+
+        if (a.Length == 0 || b.Length == 0)
+        {
+            return 0;
+        }
+
+        if (string.Equals(a, b, StringComparison.Ordinal))
+        {
+            return 1.0;
+        }
+
+        if (b.StartsWith(a, StringComparison.Ordinal) || a.StartsWith(b, StringComparison.Ordinal))
+        {
+            var shorter = Math.Min(a.Length, b.Length);
+            var longer = Math.Max(a.Length, b.Length);
+            return 0.75 + (0.20 * ((double)shorter / longer));
+        }
+
+        return DiceCoefficient(a, b);
+    }
+
+    /// <summary>
     /// Returns a confidence in [0,1] that <paramref name="candidate"/> is the work
     /// described by <paramref name="query"/>.
     /// </summary>

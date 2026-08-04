@@ -52,9 +52,20 @@ public sealed partial class FilenameParser
     [GeneratedRegex(@"^(?<name>.*[a-z])(?<year>(?:19|20)\d{2})$", RegexOptions.IgnoreCase)]
     private static partial Regex GluedYear();
 
+    /// <summary>
+    /// A download id run straight onto the title with no separator:
+    /// "anhonestanswerandotherstories1442260106".
+    /// </summary>
+    [GeneratedRegex(@"^(?<name>.*[a-z])(?<id>\d{9,14})$", RegexOptions.IgnoreCase)]
+    private static partial Regex GluedAssetId();
+
     /// <summary>Humble/Calibre numeric asset ids and bare ISBNs.</summary>
     [GeneratedRegex(@"^\d{9,14}$")]
     private static partial Regex AssetId();
+
+    /// <summary>Windows duplicate-file marker: "something (2)".</summary>
+    [GeneratedRegex(@"^(?<name>.+\S)\s*\(\d{1,2}\)$")]
+    private static partial Regex CopySuffix();
 
     [GeneratedRegex(@"^(?:19|20)\d{2}$")]
     private static partial Regex YearOnly();
@@ -84,6 +95,13 @@ public sealed partial class FilenameParser
         }
 
         var working = fileNameWithoutExtension.Trim();
+
+        // 0. Windows appends " (2)" when a file lands beside one of the same name.
+        //    That is a filesystem artefact, not part of the title.
+        if (CopySuffix().Match(working) is { Success: true } copy)
+        {
+            working = copy.Groups["name"].Value.Trim();
+        }
 
         // 1. Pull out parentheticals: keep years, discard scene tags.
         working = ExtractParentheticals(working, out var parenYear);
@@ -175,6 +193,25 @@ public sealed partial class FilenameParser
         for (var i = 0; i < content.Count; i++)
         {
             var token = content[i];
+
+            // Strip a glued download id before anything else, or its trailing four
+            // digits get mistaken for a year.
+            if (GluedAssetId().Match(token) is { Success: true } ga)
+            {
+                var stem = ga.Groups["name"].Value;
+                if (stem.Length >= 4)
+                {
+                    var id = ga.Groups["id"].Value;
+                    if (id.Length == 13 && id.StartsWith("97", StringComparison.Ordinal))
+                    {
+                        isbn ??= id;
+                    }
+
+                    content[i] = stem;
+                    token = stem;
+                }
+            }
+
             if (!token.Contains(' ') && GluedVolume().Match(token) is { Success: true } gv)
             {
                 var stem = gv.Groups["name"].Value;
@@ -245,6 +282,19 @@ public sealed partial class FilenameParser
             }
 
             resolved[^1] = resolved[^1].Trim(' ', ',', '-', ':', ';');
+        }
+
+        // 7. The volume often sits on the series rather than the last segment:
+        //    "americangodsvolume1_shadows" is American Gods vol 1, subtitled Shadows.
+        if (volume is null && resolved.Count > 1 &&
+            TrailingVolume().Match(resolved[0]) is { Success: true } seriesVolume)
+        {
+            var stem = seriesVolume.Groups["name"].Value.Trim();
+            if (stem.Length >= 3)
+            {
+                volume = int.Parse(seriesVolume.Groups["vol"].Value);
+                resolved[0] = stem;
+            }
         }
 
         var series = resolved.Count > 0 ? resolved[0] : string.Empty;
@@ -504,7 +554,79 @@ public sealed partial class FilenameParser
             return _caser.ToTitleCase(CollapseWhitespace(segment));
         }
 
+        if (TryExpandAuthorPrefix(segment, out var withAuthor))
+        {
+            return withAuthor;
+        }
+
         return _caser.ToTitleCase(SegmentRunTogether(segment));
+    }
+
+    /// <summary>
+    /// Peels a known author's name off the front of a run-together token.
+    /// </summary>
+    /// <remarks>
+    /// Humble builds bundles around one author and glues the name to every filename.
+    /// The hard part is the possessive: "neilgaimanstrollbridge" is "Neil Gaiman's
+    /// Troll Bridge", but a word-frequency splitter happily reads the orphaned 's'
+    /// as the start of the next word and returns "Neil Gaiman Stroll Bridge". Since
+    /// author bundles are named possessively, that reading wins unless the lexicon
+    /// recognises the non-possessive remainder instead.
+    /// </remarks>
+    private bool TryExpandAuthorPrefix(string segment, out string expanded)
+    {
+        expanded = string.Empty;
+
+        var key = Lexicon.Key(segment);
+        if (key.Length == 0)
+        {
+            return false;
+        }
+
+        foreach (var (authorKey, authorName) in _lexicon.AuthorsByLength)
+        {
+            if (authorKey.Length == 0 || !key.StartsWith(authorKey, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var rest = key[authorKey.Length..];
+            if (rest.Length == 0)
+            {
+                expanded = authorName;
+                return true;
+            }
+
+            var possessive = false;
+            if (rest[0] == 's')
+            {
+                var stripped = rest[1..];
+
+                // Whichever remainder the lexicon knows is the right reading; absent
+                // that, assume the possessive.
+                if (_lexicon.Titles.ContainsKey(stripped))
+                {
+                    rest = stripped;
+                    possessive = true;
+                }
+                else if (!_lexicon.Titles.ContainsKey(rest))
+                {
+                    rest = stripped;
+                    possessive = true;
+                }
+            }
+
+            if (rest.Length < 3)
+            {
+                return false;
+            }
+
+            var title = ResolveSegment(rest);
+            expanded = possessive ? $"{authorName}'s {title}" : $"{authorName} {title}";
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -525,14 +647,14 @@ public sealed partial class FilenameParser
             }
 
             var builder = new StringBuilder();
-            foreach (var run in SplitLetterDigitRuns(part.ToLowerInvariant()))
+            foreach (var (text, literal) in SplitRuns(part.ToLowerInvariant()))
             {
                 if (builder.Length > 0)
                 {
                     builder.Append(' ');
                 }
 
-                builder.Append(run.All(char.IsAsciiDigit) ? run : _segmenter.SegmentToString(run));
+                builder.Append(literal ? text : _segmenter.SegmentToString(text));
             }
 
             rendered.Add(builder.ToString());
@@ -541,12 +663,80 @@ public sealed partial class FilenameParser
         return string.Join('-', rendered);
     }
 
-    /// <summary>Yields alternating letter and digit runs so "30daysofnight" keeps its 30.</summary>
-    private static IEnumerable<string> SplitLetterDigitRuns(string value)
+    /// <summary>
+    /// Splits into letter and digit runs so "30daysofnight" keeps its 30, then glues
+    /// ordinal suffixes back onto their number.
+    /// </summary>
+    /// <remarks>
+    /// Without the second step "2ndedition" splits to "2" + "ndedition" and comes out
+    /// as "2 Nd Edition". Runs flagged <c>Literal</c> bypass the word splitter, which
+    /// would otherwise shred "2nd" right back apart.
+    /// </remarks>
+    private static IEnumerable<(string Text, bool Literal)> SplitRuns(string value)
     {
+        var runs = SplitLetterDigitRuns(value);
+
+        for (var i = 0; i < runs.Count; i++)
+        {
+            var run = runs[i];
+            var isDigits = run.Length > 0 && run.All(char.IsAsciiDigit);
+
+            if (isDigits && i + 1 < runs.Count && runs[i + 1].Length >= 2)
+            {
+                var suffix = runs[i + 1][..2];
+                if (IsOrdinalSuffixFor(run, suffix))
+                {
+                    yield return (run + suffix, true);
+
+                    var remainder = runs[i + 1][2..];
+                    if (remainder.Length > 0)
+                    {
+                        yield return (remainder, false);
+                    }
+
+                    i++;
+                    continue;
+                }
+            }
+
+            yield return (run, isDigits);
+        }
+    }
+
+    /// <summary>Checks that "st", "nd", "rd" or "th" is the correct suffix for a number.</summary>
+    private static bool IsOrdinalSuffixFor(string digits, string suffix)
+    {
+        if (!int.TryParse(digits, out var number))
+        {
+            return false;
+        }
+
+        var lastTwo = number % 100;
+        var last = number % 10;
+
+        // 11th, 12th and 13th break the otherwise simple last-digit rule.
+        if (lastTwo is 11 or 12 or 13)
+        {
+            return suffix == "th";
+        }
+
+        return suffix switch
+        {
+            "st" => last == 1,
+            "nd" => last == 2,
+            "rd" => last == 3,
+            "th" => last is 0 or 4 or 5 or 6 or 7 or 8 or 9,
+            _ => false,
+        };
+    }
+
+    /// <summary>Yields alternating letter and digit runs.</summary>
+    private static List<string> SplitLetterDigitRuns(string value)
+    {
+        var runs = new List<string>();
         if (value.Length == 0)
         {
-            yield break;
+            return runs;
         }
 
         var start = 0;
@@ -559,14 +749,11 @@ public sealed partial class FilenameParser
                 continue;
             }
 
-            var run = value[start..i];
-            if (run.Length > 0)
-            {
-                yield return run;
-            }
-
+            runs.Add(value[start..i]);
             start = i;
         }
+
+        return runs;
     }
 
     /// <summary>

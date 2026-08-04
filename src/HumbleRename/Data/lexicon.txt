@@ -116,6 +116,56 @@ thefade = The Fade
 thewickedandthedivine = The Wicked + The Divine
 wytches = Wytches
 
+# --- Neil Gaiman, a recurring Humble bundle ---
+acalendaroftales = A Calendar of Tales
+adventuresinthedreamtrade = Adventures in the Dream Trade
+afallofstardust = A Fall of Stardust
+americangods = American Gods
+angelsandvisitations = Angels and Visitations
+astudyinemerald = A Study in Emerald
+creaturesofthenight = Creatures of the Night
+harlequinvalentine = Harlequin Valentine
+howtotalktogirlsatparties = How to Talk to Girls at Parties
+miraclemanthegoldenage = Miracleman: The Golden Age
+murdermysteries = Murder Mysteries
+myainsel = My Ainsel
+neverwear = Neverwear
+norsemythology = Norse Mythology
+onlytheendoftheworldagain = Only the End of the World Again
+signaltonoise = Signal to Noise
+snowglassapples = Snow, Glass, Apples
+sweeneytodd = Sweeney Todd
+themomentofthestorm = The Moment of the Storm
+theproblemofsusan = The Problem of Susan
+thesandman = The Sandman
+sandman = The Sandman
+trollbridge = Troll Bridge
+violentcases = Violent Cases
+
+# ---------------------------------------------------------------------------
+# [authors]  key = Proper Name
+#
+# Humble bundles are frequently built around one author, whose name is glued to
+# the front of every filename: "neilgaimanstrollbridge". Listing the name lets
+# the parser peel it off and, crucially, recognise the possessive 's' that would
+# otherwise be swallowed into the title ("Stroll Bridge" for "'s Troll Bridge").
+# ---------------------------------------------------------------------------
+[authors]
+neilgaiman = Neil Gaiman
+alanmoore = Alan Moore
+briankvaughan = Brian K. Vaughan
+warrenellis = Warren Ellis
+grantmorrison = Grant Morrison
+garthennis = Garth Ennis
+mikemignola = Mike Mignola
+robertkirkman = Robert Kirkman
+joshuawilliamson = Joshua Williamson
+mattfraction = Matt Fraction
+edbrubaker = Ed Brubaker
+jefflemire = Jeff Lemire
+brandonsanderson = Brandon Sanderson
+terrypratchett = Terry Pratchett
+
 # ---------------------------------------------------------------------------
 # [words]
 #
@@ -124,6 +174,17 @@ wytches = Wytches
 # entry. Keep these lowercase and single-token.
 # ---------------------------------------------------------------------------
 [words]
+ainsel
+gaiman
+heliogabolous
+oconnor
+snellings
+vess
+fishie
+neverwear
+tulips
+miscellany
+portfolio
 ajin
 armor
 batman
@@ -320,6 +381,16 @@ special = Special
 season1 = Season One
 season2 = Season Two
 season3 = Season Three
+firstedition = First Edition
+secondedition = Second Edition
+thirdedition = Third Edition
+1stedition = First Edition
+2ndedition = Second Edition
+3rdedition = Third Edition
+4thedition = Fourth Edition
+anniversaryedition = Anniversary Edition
+graphicnovel = Graphic Novel
+preview = Preview
 tp = Trade Paperback
 tpb = Trade Paperback
 hc = Hardcover

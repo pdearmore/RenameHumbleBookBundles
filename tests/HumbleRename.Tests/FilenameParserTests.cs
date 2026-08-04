@@ -128,6 +128,47 @@ public class FilenameParserTests
         Assert.Equal("9781632152176", TestEngine.Parse("Nailbiter_9781632152176").Isbn);
     }
 
+    [Theory]
+    // Humble builds bundles around one author and glues the name onto every file.
+    // The orphaned possessive 's' is the trap: a word-frequency splitter reads it as
+    // the start of the next word and turns "'s Troll Bridge" into "Stroll Bridge".
+    [InlineData("neilgaimanstrollbridge", "Neil Gaiman's Troll Bridge")]
+    [InlineData("neilgaimanschivalry", "Neil Gaiman's Chivalry")]
+    [InlineData("neilgaimanssnowglassapples", "Neil Gaiman's Snow, Glass, Apples")]
+    [InlineData("neilgaimanshowtotalktogirlsatparties", "Neil Gaiman's How to Talk to Girls at Parties")]
+    [InlineData("neilgaimansastudyinemerald", "Neil Gaiman's A Study in Emerald")]
+    public void ExpandsPossessiveAuthorPrefix(string stem, string expected) =>
+        Assert.Equal(expected, TestEngine.FinalName(stem));
+
+    [Theory]
+    // The suffix must stay welded to its number, or it splits to "2 Nd Edition".
+    [InlineData("murdermysteries2ndedition", "Murder Mysteries (Second Edition)")]
+    [InlineData("creaturesofthenightsecondedition", "Creatures of the Night (Second Edition)")]
+    public void KeepsOrdinalsIntact(string stem, string expected) =>
+        Assert.Equal(expected, TestEngine.FinalName(stem));
+
+    [Theory]
+    // A download id run straight onto the title, with no separator to split on.
+    [InlineData("anhonestanswerandotherstories1442260106", "An Honest Answer and Other Stories")]
+    [InlineData("feedersandeatersandotherstories1442343441", "Feeders and Eaters and Other Stories")]
+    public void StripsGluedAssetIds(string stem, string expected) =>
+        Assert.Equal(expected, TestEngine.FinalName(stem));
+
+    [Fact]
+    public void DropsWindowsDuplicateFileSuffix() =>
+        Assert.Equal("Signal to Noise", TestEngine.FinalName("signaltonoise (1)"));
+
+    [Fact]
+    public void ReadsVolumeOffTheSeriesSegment()
+    {
+        // "americangodsvolume1_shadows" is American Gods vol 1, subtitled Shadows.
+        var parsed = TestEngine.Parse("americangodsvolume1_shadowsgraphicnovel");
+
+        Assert.Equal(1, parsed.Volume);
+        Assert.Equal("American Gods", parsed.Series);
+        Assert.Equal("Shadows", parsed.Subtitle);
+    }
+
     [Fact]
     public void EmptyInputYieldsNoTitle() =>
         Assert.False(TestEngine.Parse(string.Empty).HasTitle);

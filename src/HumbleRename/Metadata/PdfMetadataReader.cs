@@ -14,6 +14,26 @@ public static partial class PdfMetadataReader
     /// <summary>How much of the file the XMP fallback will scan.</summary>
     private const int XmpScanLimit = 4 * 1024 * 1024;
 
+    /// <summary>
+    /// Title values that are an artefact of how the PDF was produced rather than the
+    /// name of the work. Publishers ship these constantly, and one applied blindly
+    /// renames a perfectly good file to "Print.pdf".
+    /// </summary>
+    private static readonly HashSet<string> ProductionArtefacts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "print", "untitled", "unknown", "document", "new document", "book", "final",
+        "proof", "draft", "layout", "cover", "interior", "spread", "test", "temp",
+        "microsoft word", "adobe indesign", "adobe photoshop", "quarkxpress",
+        "pdf", "output", "press", "web", "ebook", "reprint", "file", "copy",
+    };
+
+    /// <summary>Fragments that mark a working title rather than a real one.</summary>
+    private static readonly string[] ProductionMarkers =
+    [
+        "final text", "final proof", "press ready", "for print", "working copy",
+        "untitled-", "indesign", "quark", ".indd", ".qxd",
+    ];
+
     [GeneratedRegex(@"<dc:title>\s*(?:<rdf:Alt[^>]*>\s*<rdf:li[^>]*>)?(?<title>[^<]{2,300})",
         RegexOptions.IgnoreCase)]
     private static partial Regex XmpTitle();
@@ -117,11 +137,18 @@ public static partial class PdfMetadataReader
             return null;
         }
 
-        if (text.Equals("untitled", StringComparison.OrdinalIgnoreCase) ||
-            text.Equals("unknown", StringComparison.OrdinalIgnoreCase) ||
-            text.Equals("Microsoft Word", StringComparison.OrdinalIgnoreCase))
+        if (ProductionArtefacts.Contains(text))
         {
             return null;
+        }
+
+        // Working titles left behind by a layout program, e.g. "AHE Final Text".
+        foreach (var marker in ProductionMarkers)
+        {
+            if (text.Contains(marker, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
         }
 
         // "SomeBook.indd" or "final_v3.pdf" is a source filename, not a title.
