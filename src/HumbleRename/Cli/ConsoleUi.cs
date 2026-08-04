@@ -184,6 +184,97 @@ public static class ConsoleUi
         }
     }
 
+    /// <summary>
+    /// Reads a single menu selection. Uses an unbuffered keypress when a real console
+    /// is attached so menus respond instantly, and falls back to a line read otherwise.
+    /// </summary>
+    public static char ReadChoice()
+    {
+        if (Console.IsInputRedirected)
+        {
+            var line = Console.ReadLine();
+            return string.IsNullOrWhiteSpace(line) ? '\0' : char.ToUpperInvariant(line.Trim()[0]);
+        }
+
+        var key = Console.ReadKey(intercept: true);
+        return char.ToUpperInvariant(key.KeyChar);
+    }
+
+    /// <summary>Draws a warez-style section rule: ▓▒░ TITLE ░▒▓────────</summary>
+    public static void Section(string title)
+    {
+        Console.WriteLine();
+        Write("  ▓▒░ ", ConsoleColor.Magenta);
+        Write(title.ToUpperInvariant(), ConsoleColor.White);
+        Write(" ░▒▓", ConsoleColor.Magenta);
+
+        var used = 6 + title.Length + 4;
+        var remaining = Math.Max(0, Math.Min(SafeWidth() - 2, 78) - used);
+        WriteLine(new string('─', remaining), ConsoleColor.DarkGray);
+        Console.WriteLine();
+    }
+
+    /// <summary>
+    /// Draws one menu row: a bracketed key, a dotted leader, and the current value.
+    /// </summary>
+    public static void MenuItem(string key, string label, string? value = null, int labelWidth = 24)
+    {
+        Write("   [", ConsoleColor.DarkGray);
+        Write(key, ConsoleColor.Yellow);
+        Write("]  ", ConsoleColor.DarkGray);
+
+        if (value is null)
+        {
+            WriteLine(label, ConsoleColor.Gray);
+            return;
+        }
+
+        Write(label + " ", ConsoleColor.Gray);
+        var dots = Math.Max(1, labelWidth - label.Length);
+        Write(new string('.', dots) + " ", ConsoleColor.DarkGray);
+        WriteLine(value, ConsoleColor.Cyan);
+    }
+
+    /// <summary>Draws the prompt the user types their menu selection at.</summary>
+    public static void Prompt(string label)
+    {
+        Console.WriteLine();
+        Write("  ▓▒░ ", ConsoleColor.Magenta);
+        Write(label, ConsoleColor.White);
+        Write(" ░▒▓ ", ConsoleColor.Magenta);
+        Write("> ", ConsoleColor.Yellow);
+    }
+
+    public static void TryClear()
+    {
+        try
+        {
+            if (!Console.IsOutputRedirected)
+            {
+                Console.Clear();
+            }
+        }
+        catch (IOException)
+        {
+            // Cosmetic only.
+        }
+    }
+
+    /// <summary>Waits for any key before returning to a menu.</summary>
+    public static void Pause(string message = "press any key to continue")
+    {
+        Console.WriteLine();
+        Muted($"  {message}...");
+
+        if (Console.IsInputRedirected)
+        {
+            Console.ReadLine();
+            return;
+        }
+
+        Console.ReadKey(intercept: true);
+    }
+
     /// <summary>Asks for the folder to work on, as the original tool did.</summary>
     public static string? PromptForFolder()
     {

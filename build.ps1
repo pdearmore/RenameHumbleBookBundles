@@ -57,7 +57,7 @@ if (Test-Path $exe) {
     $size = [math]::Round((Get-Item $exe).Length / 1MB, 1)
     Write-Host ''
     Write-Host "Built $exe ($size MB)" -ForegroundColor Green
-    Write-Host 'Try:  .\publish\hbrename.exe "D:\Comics\Humble Bundle" --dry-run' -ForegroundColor DarkGray
+    Write-Host 'Run it:  .\publish\hbrename.exe    (menus do the rest)' -ForegroundColor DarkGray
 }
 else {
     throw "Expected $exe but it was not produced."

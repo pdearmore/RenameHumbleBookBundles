@@ -15,6 +15,35 @@ const int ExitUsage = 2;
 
 ConsoleUi.EnableUnicodeOutput();
 
+var appVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
+
+// With no switches given, this is a double-click or a bare `hbrename` from a prompt:
+// drive everything from on-screen menus instead. A folder may still be passed (or
+// dragged onto the exe) and it simply pre-fills the first menu entry. Switches are
+// still honoured when present, so scripted use keeps working.
+var usesSwitches = args.Any(static a => a.StartsWith('-'));
+
+if (!usesSwitches)
+{
+    using var menuCancellation = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, e) =>
+    {
+        e.Cancel = true;
+        menuCancellation.Cancel();
+    };
+
+    try
+    {
+        var session = new InteractiveSession(args.FirstOrDefault(), appVersion);
+        return await session.RunAsync(menuCancellation.Token);
+    }
+    catch (OperationCanceledException)
+    {
+        ConsoleUi.Warn("\n  Cancelled.");
+        return ExitError;
+    }
+}
+
 if (!CommandLineOptions.TryParse(args, out var options, out var parseError))
 {
     ConsoleUi.Error(parseError!);
@@ -29,8 +58,7 @@ if (options.Help)
 
 if (options.Version)
 {
-    var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
-    Console.WriteLine($"hbrename {version}");
+    Console.WriteLine($"hbrename {appVersion}");
     return ExitOk;
 }
 

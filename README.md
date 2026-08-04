@@ -34,16 +34,62 @@ The executable lands in `.\publish\hbrename.exe`. Requires the .NET 10 SDK to bu
 
 ## Using it
 
+Double-click `hbrename.exe`, or run it with no arguments. Everything is chosen from
+on-screen menus — there is nothing to memorise.
+
+```
+  ▓▒░ MAIN MENU ░▒▓───────────────────────────────────────────────
+
+   [1]  Folder .................. D:\Comics\Humble Bundle
+   [2]  Name format ............. Full descriptive title
+   [3]  Include subfolders ...... No
+   [4]  Online lookup ........... No
+   [5]  Read file metadata ...... Yes
+   [6]  File types .............. Comics and ebooks
+   [7]  Download cloud files .... No
+
+   [S]  Scan and preview
+   [U]  Undo the last run in this folder
+   [Q]  Quit
+
+  ▓▒░ choose ░▒▓ >
+```
+
+Drag a folder onto the exe to pre-fill entry `[1]`.
+
+Press `S` and it lists every file's current and proposed name, then asks before
+touching anything. Once applied it immediately offers to put everything back.
+
+### Name formats
+
+Chosen from menu entry `[2]`, each shown with a worked example:
+
+| | Format | Result |
+| --- | --- | --- |
+| `1` | Full descriptive title | `The Walking Dead Vol. 01 - Days Gone Bye (2003).cbz` |
+| `2` | Scraper friendly (Komga, Kavita) | `The Walking Dead v01 (2003).cbz` |
+| `3` | Books — title and author | `Dune - Frank Herbert (1965).epub` |
+| `4` | Just fix casing and spacing | `The Walking Dead.cbz` |
+| `C` | Custom template | see [Templates](#templates) |
+
+Use `3` for Humble *book* bundles — it keeps the author, which the comic formats drop.
+
+### File types
+
+Menu entry `[6]`: comics and ebooks together (the default), comics only, ebooks only,
+every file regardless of extension, or your own comma-separated list.
+
+## Scripting it
+
+The menus are the point, but every setting is also a switch, so the same binary can be
+driven from a script or scheduled task. Passing **any** switch skips the menus entirely.
+
 ```powershell
-hbrename                                  # asks which folder
-hbrename "D:\Comics\Humble Bundle"
 hbrename D:\Comics --recurse --online
 hbrename D:\Comics --dry-run              # preview and stop
 hbrename D:\Comics --undo                 # put the last run back
+hbrename D:\Books --template "{Title}[ - {Author}][ ({Year})]" --yes
 ```
-
-The flow is always the same: scan, show every file's current and proposed name,
-ask, apply, then offer to revert immediately.
 
 ### Options
 
