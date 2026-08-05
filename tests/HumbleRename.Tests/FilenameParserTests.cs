@@ -112,6 +112,10 @@ public class FilenameParserTests
     [InlineData("thewalkingdead_fcbd")]
     // Supplied verbatim by the lexicon, so complete however odd the last word looks.
     [InlineData("thewalkingdead_heresnegan")]
+    // Ordinary compounds that fall outside the 80k corpus are not clipped words.
+    [InlineData("Crochet Ragdolls")]
+    [InlineData("Easy Crochet Dishcloths")]
+    [InlineData("Snuggle and Play Crochet")]
     public void DoesNotFlagCompleteTitles(string stem) =>
         Assert.False(TestEngine.Parse(stem).LooksTruncated);
 

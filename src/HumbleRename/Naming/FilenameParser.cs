@@ -866,9 +866,46 @@ public sealed partial class FilenameParser
                          _lexicon.Words.Contains(last) ||
                          _lexicon.Uppercase.Contains(last) ||
                          _segmenter.IsLikelyAcronym(last) ||
+                         IsKnownCompound(last) ||
                          last.Any(char.IsAsciiDigit);
 
         return !recognised && last.Length >= 4;
+    }
+
+    /// <summary>
+    /// True when an unrecognised word is really a compound of recognised ones.
+    /// </summary>
+    /// <remarks>
+    /// The corpus holds the 80,000 most frequent words, so perfectly ordinary
+    /// compounds fall outside it — "ragdolls", "dishcloths". Those were being reported
+    /// as clipped titles. A genuine truncation does not decompose this way:
+    /// "redempt" leaves a fragment behind, while "dishcloths" is cleanly dish + cloths.
+    /// </remarks>
+    private bool IsKnownCompound(string word)
+    {
+        if (word.Length < 6)
+        {
+            return false;
+        }
+
+        var parts = _segmenter.Segment(word);
+        if (parts.Count < 2)
+        {
+            return false;
+        }
+
+        foreach (var part in parts)
+        {
+            // Every piece must be everyday vocabulary in its own right. Mere corpus
+            // membership is too weak: "redempt" splits into "red" and "empt", and
+            // "empt" is present only as a rank-78,000 curiosity.
+            if (part.Length < 3 || !_segmenter.IsFrequentWord(part))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static string CollapseWhitespace(string value)

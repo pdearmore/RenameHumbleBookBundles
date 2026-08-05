@@ -21,6 +21,8 @@ public class MetadataAgreementTests
     [InlineData("Neverwear: A Portfolio of Stories", "Neverwhere AHE Final Text")]
     [InlineData("Signal to Noise", "Untitled-1")]
     [InlineData("A Calendar of Tales", "Document1")]
+    // A short fragment turning up inside an unrelated title proves nothing.
+    [InlineData("Art", "The Art of Starting Over: A Memoir")]
     public void RejectsMetadataThatDisagreesWithTheFilename(string fromFilename, string fromMetadata) =>
         Assert.True(TitleSimilarity.Compare(fromFilename, fromMetadata) < Threshold,
             $"expected disagreement, scored {TitleSimilarity.Compare(fromFilename, fromMetadata):F2}");
@@ -31,6 +33,8 @@ public class MetadataAgreementTests
     [InlineData("The Action Bible: God's Redempt", "The Action Bible")]
     [InlineData("Day of the Dead", "Day of the Dead")]
     [InlineData("Nailbiter", "Nailbiter Vol. 1")]
+    // The filename is an abbreviation sitting inside the real title, not a mismatch.
+    [InlineData("Stitch Dictionary", "Crochet Every Way Stitch Dictionary: 125 Essential Stitches")]
     public void AcceptsMetadataThatAgrees(string fromFilename, string fromMetadata) =>
         Assert.True(TitleSimilarity.Compare(fromFilename, fromMetadata) >= Threshold,
             $"expected agreement, scored {TitleSimilarity.Compare(fromFilename, fromMetadata):F2}");

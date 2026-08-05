@@ -76,7 +76,33 @@ public static class TitleSimilarity
             return 0.75 + (0.20 * ((double)shorter / longer));
         }
 
+        // One title may sit whole inside the other without starting it: a file called
+        // "Stitch Dictionary" whose metadata reads "Crochet Every Way Stitch
+        // Dictionary: 125 Essential Stitches". That is agreement, and bigram overlap
+        // alone scores it poorly because the lengths are so lopsided.
+        if (ContainsWhole(a, b) || ContainsWhole(b, a))
+        {
+            var shorter = Math.Min(a.Length, b.Length);
+            var longer = Math.Max(a.Length, b.Length);
+            return 0.70 + (0.20 * ((double)shorter / longer));
+        }
+
         return DiceCoefficient(a, b);
+    }
+
+    /// <summary>
+    /// True when <paramref name="needle"/> appears in <paramref name="haystack"/> on
+    /// whole-word boundaries. Short needles are refused, since "art" turning up inside
+    /// "start" says nothing about two books being the same.
+    /// </summary>
+    private static bool ContainsWhole(string needle, string haystack)
+    {
+        if (needle.Length < 8 || needle.Length >= haystack.Length)
+        {
+            return false;
+        }
+
+        return $" {haystack} ".Contains($" {needle} ", StringComparison.Ordinal);
     }
 
     /// <summary>

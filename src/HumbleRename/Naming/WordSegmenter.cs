@@ -23,6 +23,19 @@ public sealed class WordSegmenter
     private readonly double _logTotal;
 
     /// <summary>
+    /// Log-probability floor separating everyday vocabulary from the long tail.
+    /// Membership alone is a weak signal: "empt" sits at rank 78,399 in the corpus,
+    /// so a mere presence test would vouch for the fragment left by a clipped word.
+    /// </summary>
+    private readonly double _frequentWordFloor;
+
+    /// <summary>Corpus rank at which a word stops counting as everyday vocabulary.</summary>
+    private const int FrequentWordRank = 40000;
+
+    /// <summary>Corpus rank whose weight is given to injected domain vocabulary.</summary>
+    private const int BoostRank = 15000;
+
+    /// <summary>
     /// Small bonus subtracted per word boundary. Discourages shredding a name into
     /// many tiny common words ("t he ninj ettes") when fewer longer words fit as well.
     /// </summary>
@@ -49,10 +62,15 @@ public sealed class WordSegmenter
             _logProbability[word] = Math.Log10(count) - _logTotal;
         }
 
+        // One sort serves both derived thresholds.
+        var ordered = counts.Values.OrderByDescending(static c => c).ToArray();
+        _frequentWordFloor =
+            Math.Log10(Math.Max(ordered[Math.Min(FrequentWordRank, ordered.Length - 1)], 1)) - _logTotal;
+
         // Domain vocabulary (character and publisher names) never appears in a general
         // English corpus. Give each entry the weight of a genuine but uncommon word so it
         // can win against an English split without steamrolling ordinary prose.
-        var boostWeight = DeriveBoostWeight(counts);
+        var boostWeight = Math.Max(ordered[Math.Min(BoostRank, ordered.Length - 1)], 1);
         foreach (var word in boostedWords ?? [])
         {
             var normalized = word.Trim().ToLowerInvariant();
@@ -69,20 +87,18 @@ public sealed class WordSegmenter
         }
     }
 
-    /// <summary>
-    /// Picks a weight for injected domain words: the frequency of a mid-tail corpus word.
-    /// Data-driven so it stays sane regardless of which corpus is loaded.
-    /// </summary>
-    private static double DeriveBoostWeight(IReadOnlyDictionary<string, long> counts)
-    {
-        var ordered = counts.Values.OrderByDescending(static c => c).ToArray();
-        var index = Math.Min(15000, ordered.Length - 1);
-        return Math.Max(ordered[index], 1);
-    }
-
-    /// <summary>True when the corpus recognises <paramref name="word"/>.</summary>
+    /// <summary>True when the corpus recognises <paramref name="word"/> at all.</summary>
     public bool IsKnownWord(string word) =>
         !string.IsNullOrEmpty(word) && _logProbability.ContainsKey(word.ToLowerInvariant());
+
+    /// <summary>
+    /// True when <paramref name="word"/> is everyday vocabulary rather than a long-tail
+    /// entry. Use this wherever a weak match would be worse than no match.
+    /// </summary>
+    public bool IsFrequentWord(string word) =>
+        !string.IsNullOrEmpty(word) &&
+        _logProbability.TryGetValue(word.ToLowerInvariant(), out var probability) &&
+        probability >= _frequentWordFloor;
 
     /// <summary>
     /// True for a short run of letters with no vowel in it, which in a filename is
