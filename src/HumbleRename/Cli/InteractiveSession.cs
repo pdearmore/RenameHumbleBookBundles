@@ -46,8 +46,11 @@ public sealed class InteractiveSession
     private bool _readMetadata = true;
     private bool _hydrateCloudFiles;
 
-    /// <summary>Comic Vine key pasted in-session; takes precedence over the environment.</summary>
+    /// <summary>Comic Vine key from a paste or the saved store; takes precedence over the environment.</summary>
     private string? _comicVineKey;
+
+    /// <summary>True when <see cref="_comicVineKey"/> is persisted to the profile, not just this run.</summary>
+    private bool _comicVineKeySaved;
 
     /// <summary>Where a free Comic Vine API key is created.</summary>
     private const string ComicVineKeyUrl = "https://comicvine.gamespot.com/api/";
@@ -56,6 +59,12 @@ public sealed class InteractiveSession
     {
         _version = version;
 
+        // Pick up a key and the menu choices remembered from a previous run.
+        _comicVineKey = ComicVineKeyStore.Load();
+        _comicVineKeySaved = _comicVineKey is not null;
+        LoadSettings();
+
+        // A folder passed on the command line or dragged onto the exe wins over the saved one.
         if (!string.IsNullOrWhiteSpace(initialFolder))
         {
             var resolved = TryResolveFolder(initialFolder);
@@ -65,6 +74,56 @@ public sealed class InteractiveSession
             }
         }
     }
+
+    /// <summary>Applies the settings remembered from a previous run.</summary>
+    private void LoadSettings()
+    {
+        var saved = SessionSettings.Load();
+
+        // A folder that has since moved or been deleted is quietly forgotten.
+        if (!string.IsNullOrWhiteSpace(saved.Folder) && Directory.Exists(saved.Folder))
+        {
+            _folder = saved.Folder;
+        }
+
+        if (!string.IsNullOrWhiteSpace(saved.CustomTemplate))
+        {
+            _customTemplate = saved.CustomTemplate;
+        }
+        else if (saved.TemplateIndex >= 0 && saved.TemplateIndex < TemplatePresets.Length)
+        {
+            _templateIndex = saved.TemplateIndex;
+        }
+
+        if (saved.CustomExtensions is { Count: > 0 })
+        {
+            _customExtensions = new HashSet<string>(saved.CustomExtensions, StringComparer.OrdinalIgnoreCase);
+        }
+        else if (saved.FileTypeIndex >= 0 && saved.FileTypeIndex < FileTypePresets.Length)
+        {
+            _fileTypeIndex = saved.FileTypeIndex;
+        }
+
+        _recurse = saved.Recurse;
+        _online = saved.Online;
+        _readMetadata = saved.ReadMetadata;
+        _hydrateCloudFiles = saved.HydrateCloudFiles;
+    }
+
+    /// <summary>Remembers the current menu choices for next time (the key persists separately).</summary>
+    private void SaveSettings() =>
+        new SessionSettings
+        {
+            Folder = _folder,
+            TemplateIndex = _templateIndex,
+            CustomTemplate = _customTemplate,
+            FileTypeIndex = _fileTypeIndex,
+            CustomExtensions = _customExtensions?.ToArray(),
+            Recurse = _recurse,
+            Online = _online,
+            ReadMetadata = _readMetadata,
+            HydrateCloudFiles = _hydrateCloudFiles,
+        }.Save();
 
     private string ActiveTemplate => _customTemplate ?? TemplatePresets[_templateIndex].Template;
 
@@ -97,7 +156,9 @@ public sealed class InteractiveSession
             firstPass = false;
             DrawMainMenu();
 
-            switch (ConsoleUi.ReadChoice())
+            var choice = ConsoleUi.ReadChoice();
+
+            switch (choice)
             {
                 case '1':
                     ChooseFolder();
@@ -133,6 +194,12 @@ public sealed class InteractiveSession
                     Console.WriteLine();
                     ConsoleUi.Muted("  Bye.");
                     return 0;
+            }
+
+            // A setting or the folder may have just changed; remember it for next time.
+            if (choice is >= '1' and <= '7' or 'S')
+            {
+                SaveSettings();
             }
         }
     }
@@ -177,7 +244,7 @@ public sealed class InteractiveSession
         !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("HUMBLERENAMER_COMICVINE_KEY"));
 
     private string ComicVineKeyStatus =>
-        !string.IsNullOrWhiteSpace(_comicVineKey) ? "Set for this session"
+        !string.IsNullOrWhiteSpace(_comicVineKey) ? (_comicVineKeySaved ? "Saved" : "Set for this session")
         : !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("HUMBLERENAMER_COMICVINE_KEY")) ? "From environment"
         : "Not set";
 
@@ -408,8 +475,10 @@ public sealed class InteractiveSession
                 break;
             case 'C':
                 _comicVineKey = null;
+                _comicVineKeySaved = false;
+                ComicVineKeyStore.Delete();
                 Console.WriteLine();
-                ConsoleUi.Muted("  Session key cleared.");
+                ConsoleUi.Muted("  Saved key removed.");
                 ConsoleUi.Pause();
                 break;
         }
@@ -419,7 +488,7 @@ public sealed class InteractiveSession
     {
         Console.WriteLine();
         ConsoleUi.Muted($"  Paste the key shown at {ComicVineKeyUrl} when signed in.");
-        ConsoleUi.Muted("  It is held for this session only, never written to disk. Blank to cancel.");
+        ConsoleUi.Muted("  It is saved to your user profile, encrypted, not the app folder. Blank to cancel.");
         Console.WriteLine();
         ConsoleUi.Write("  Key: ", ConsoleColor.White);
 
@@ -430,8 +499,18 @@ public sealed class InteractiveSession
         }
 
         _comicVineKey = input.Trim();
+        _comicVineKeySaved = ComicVineKeyStore.Save(_comicVineKey);
+
         Console.WriteLine();
-        ConsoleUi.WriteLine("  Key set for this session.", ConsoleColor.Green);
+        if (_comicVineKeySaved)
+        {
+            ConsoleUi.WriteLine("  Key saved - it will be remembered next time.", ConsoleColor.Green);
+        }
+        else
+        {
+            ConsoleUi.Warn("  Key set for this session (it could not be saved for next time).");
+        }
+
         ConsoleUi.Pause();
     }
 
@@ -574,9 +653,10 @@ public sealed class InteractiveSession
     /// <summary>
     /// Walks the files with the arrow keys, showing the names the tool derived so the
     /// user can pick one, type their own, look it up online, or keep the current name.
-    /// Up/Left step back to revise an earlier answer; Down/Right (or Enter) move on
-    /// keeping the highlighted option. Each file's candidates and choice persist across
-    /// navigation, so going back and forth never loses anything.
+    /// Up/Down move the highlight through the current file's options; Left/Right (and
+    /// Enter for next) move between files, keeping whatever option is highlighted. Each
+    /// file's candidates and choice persist across navigation, so moving back and forth
+    /// never loses anything.
     /// </summary>
     private async Task<RenamePlan> HandReviewAsync(
         RenamePlan plan,
@@ -626,11 +706,28 @@ public sealed class InteractiveSession
                 var pressed = ConsoleUi.ReadKeyInfo();
                 var ch = char.ToUpperInvariant(pressed.KeyChar);
 
-                var toPrevious = pressed.Key is ConsoleKey.UpArrow or ConsoleKey.LeftArrow || ch is ',' or '<';
-                var toNext = pressed.Key is ConsoleKey.DownArrow or ConsoleKey.RightArrow or ConsoleKey.Enter
-                             || ch is '.' or '>';
+                // Up/Down move the highlight within this file; Left/Right move between
+                // files. The '-' '+' ',' '.' stand-ins keep the flow scriptable in tests.
+                var selectUp = pressed.Key is ConsoleKey.UpArrow || ch == '-';
+                var selectDown = pressed.Key is ConsoleKey.DownArrow || ch == '+';
+                var toPrevious = pressed.Key is ConsoleKey.LeftArrow || ch is ',' or '<';
+                var toNext = pressed.Key is ConsoleKey.RightArrow or ConsoleKey.Enter || ch is '.' or '>';
 
-                if (toPrevious)
+                if (selectUp)
+                {
+                    if (selected[i] > 0)
+                    {
+                        selected[i]--;
+                    }
+                }
+                else if (selectDown)
+                {
+                    if (selected[i] < candidates.Count - 1)
+                    {
+                        selected[i]++;
+                    }
+                }
+                else if (toPrevious)
                 {
                     if (i > 0)
                     {
@@ -639,7 +736,7 @@ public sealed class InteractiveSession
                 }
                 else if (toNext)
                 {
-                    // Move on keeping the highlighted option, already stored in selected[i].
+                    // Move to the next file keeping the highlighted option (in selected[i]).
                     i++;
                 }
                 else if (char.IsDigit(ch))
@@ -803,8 +900,8 @@ public sealed class InteractiveSession
         ConsoleUi.MenuItem("E", "Type my own name");
         ConsoleUi.MenuItem("S", "Skip - keep the current name");
         ConsoleUi.MenuItem("Q", "Finish review now");
-        ConsoleUi.Muted("  Up/Left go back to revise; Down/Right (or Enter) move on with the");
-        ConsoleUi.Muted("  highlighted name. A number picks that option and moves on.");
+        ConsoleUi.Muted("  Up/Down choose an option; Left/Right move between files (Enter = next).");
+        ConsoleUi.Muted("  A number also picks an option and moves on.");
         ConsoleUi.Prompt("Choose");
     }
 

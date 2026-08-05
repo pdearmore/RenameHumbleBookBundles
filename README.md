@@ -59,9 +59,14 @@ on-screen menus — there is nothing to memorise.
   ▓▒░ Choose ░▒▓ >
 ```
 
-Entry `[8]` is where you paste a Comic Vine key for the session, or press `G` to open
-the free signup page in your browser. The nudge and `[8]`'s "Not set" both vanish once a
-key is present — either pasted here, or found in `HUMBLERENAMER_COMICVINE_KEY`.
+Entry `[8]` is where you paste a Comic Vine key, or press `G` to open the free signup
+page in your browser. The nudge and `[8]`'s "Not set" both vanish once a key is present —
+either pasted here, or found in `HUMBLERENAMER_COMICVINE_KEY`.
+
+Every menu choice — the folder, name format, toggles, file types — is remembered between
+runs, so the tool opens where you left off. The settings live in
+`%LOCALAPPDATA%\HumbleRenamer\settings.json` (the Comic Vine key is kept separately and
+encrypted); a folder passed on the command line still wins over the remembered one.
 
 Drag a folder onto the exe to pre-fill entry `[1]`.
 
@@ -93,10 +98,10 @@ and you pick one, type your own, or keep the current name, then it moves to the 
   ▓▒░ Choose ░▒▓ >
 ```
 
-Move with the arrow keys: Down or Right (or Enter) goes to the next file keeping the
-highlighted name; Up or Left steps back to an earlier file to change your answer. A
-number picks that option and moves on. Every file keeps its choice as you go back and
-forth, so nothing is lost, and `Q` finishes from wherever you are.
+Move with the arrow keys: Up and Down move the highlight through the current file's
+options; Left and Right (or Enter for next) move between files, keeping whatever option
+is highlighted. A number also picks an option and moves on. Every file keeps its choice
+as you go back and forth, so nothing is lost, and `Q` finishes from wherever you are.
 
 Not sure what a file actually is? `O` opens it in whatever viewer the OS uses for that
 type — the PDF reader, the CBZ viewer — and leaves you on the same file to decide.
@@ -223,8 +228,10 @@ $env:HUMBLERENAMER_GOOGLE_BOOKS_KEY = 'your-key'
 
 A Comic Vine key is free — create an account at <https://comicvine.gamespot.com/api/> and
 it is shown on that page. In the menus, entry `[8]` opens the signup page for you and lets
-you paste the key for the session, so you don't have to set the environment variable at
-all. The main menu nags gently until a key is found either way.
+you paste the key, so you don't have to set the environment variable at all. A pasted key
+is remembered between runs: it is encrypted for your Windows account (DPAPI) and stored at
+`%LOCALAPPDATA%\HumbleRenamer\comicvine.key` — never in plaintext, never in the app folder.
+`[8]` also clears it. The main menu nags gently until a key is found either way.
 
 Responses are cached in `%LOCALAPPDATA%\HumbleRenamer\lookup-cache.json`, including
 misses, so a second run over the same folder does not re-ask.
