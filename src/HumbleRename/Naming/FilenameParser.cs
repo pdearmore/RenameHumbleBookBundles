@@ -44,8 +44,14 @@ public sealed partial class FilenameParser
     [GeneratedRegex(@"^#\s*0*(\d{1,4})$")]
     private static partial Regex HashIssue();
 
-    /// <summary>Trailing volume glued to a run-together name: "lockeandkeyv1".</summary>
-    [GeneratedRegex(@"^(?<name>.*[a-z])v(?<vol>\d{1,3})$", RegexOptions.IgnoreCase)]
+    /// <summary>
+    /// Trailing volume glued to a run-together name with no separator:
+    /// "lockeandkeyv1", "butcherbakertherighteousmakervol1", "nailbitervolume2".
+    /// Recognising the "vol"/"volume" spellings (not just a bare "v") is what lets the
+    /// title lexicon fire on the stem — otherwise the volume stays welded on and the
+    /// whole name falls through to the word splitter.
+    /// </summary>
+    [GeneratedRegex(@"^(?<name>.*[a-z])(?:volume|vol|v)\.?0*(?<vol>\d{1,3})$", RegexOptions.IgnoreCase)]
     private static partial Regex GluedVolume();
 
     /// <summary>Trailing series year glued to a name: "quantumandwoody2017".</summary>

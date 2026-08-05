@@ -49,6 +49,17 @@ public static class SplashScreen
         ConsoleColor.Cyan, ConsoleColor.Cyan, ConsoleColor.DarkCyan,
     ];
 
+    /// <summary>The Ctrl-C sign-off, in the same block font as the logo.</summary>
+    private static readonly string[] Farewell =
+    [
+        @"██████╗ ██╗   ██╗███████╗██╗",
+        @"██╔══██╗╚██╗ ██╔╝██╔════╝██║",
+        @"██████╔╝ ╚████╔╝ █████╗  ██║",
+        @"██╔══██╗  ╚██╔╝  ██╔══╝  ╚═╝",
+        @"██████╔╝   ██║   ███████╗██╗",
+        @"╚═════╝    ╚═╝   ╚══════╝╚═╝",
+    ];
+
     public static void Show(string version)
     {
         ConsoleUi.TryClear();
@@ -96,6 +107,34 @@ public static class SplashScreen
         ConsoleUi.WriteLine(" ]", ConsoleColor.DarkGray);
 
         WriteBar();
+    }
+
+    /// <summary>
+    /// The Ctrl-C exit screen: a block-letter sign-off between two divider rules.
+    /// Kept self-contained and allocation-light so it is safe to call straight from the
+    /// <see cref="Console.CancelKeyPress"/> handler, where the app may be torn down the
+    /// instant this returns.
+    /// </summary>
+    public static void ShowGoodbye()
+    {
+        Console.WriteLine();
+        WriteBar();
+        Console.WriteLine();
+
+        for (var row = 0; row < Farewell.Length; row++)
+        {
+            Console.Write("   ");
+            WriteShadowed(Farewell[row], row % 2 == 0 ? ConsoleColor.Magenta : ConsoleColor.Cyan);
+            Console.WriteLine();
+        }
+
+        Console.WriteLine();
+        Console.Write("   ");
+        ConsoleUi.Write("· stay elite · catch you on the flip side ·", ConsoleColor.Gray);
+        Console.WriteLine();
+
+        WriteBar();
+        Console.WriteLine();
     }
 
     /// <summary>Draws the shaded divider rule: ░▒▓ ... ▓▒░</summary>

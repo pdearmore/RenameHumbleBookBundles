@@ -53,7 +53,41 @@ public class FilenameParserTests
     [InlineData("MAD Magazine #4 - MAD", "MAD Magazine #4")]
     // Scene-release tags and the release group are discarded, the year is kept.
     [InlineData("Predator - Hunters (2018) (digital) (The Magicians-Empire)", "Predator - Hunters (2018)")]
+    // Image bundle: proper nouns the word frequencies shred ("Ma Est Ros", "Gri Zg Rob US").
+    [InlineData("maestros_vol1", "Maestros Vol. 01")]
+    [InlineData("grizgrobus", "Griz Grobus")]
+    [InlineData("ophiuchus_vol1", "Ophiuchus Vol. 01")]
+    [InlineData("frontiersman_vol1", "Frontiersman Vol. 01")]
+    [InlineData("shadecraft", "Shadecraft")]
+    // A phrase the splitter reads as "West and on Guard" without a pinned title.
+    [InlineData("westandonguard", "We Stand on Guard")]
+    // A slug that drops a word the real title keeps ("...in the Dark").
+    [InlineData("meyouloveindark_vol1", "Me You Love in the Dark Vol. 01")]
+    [InlineData("spaceoperaxanadaxacrosstheunknowndimensionsofthegalaxy",
+        "Space Opera Xanadax Across the Unknown Dimensions of the Galaxy")]
+    // Contractions the slug flattens: "aint" -> "Ain't", "youll" -> "You'll".
+    [InlineData("aintnograve_vol1", "Ain't No Grave Vol. 01")]
+    [InlineData("youlldobadthings", "You'll Do Bad Things")]
+    // A leading "The" the slug drops, rendered from a title-lexicon entry.
+    [InlineData("unchosen_vol1", "The UnChosen Vol. 01")]
+    // Author's name glued on with the possessive "'s" trap, as with the Gaiman bundle.
+    [InlineData("jackkirbyssilverstar", "Jack Kirby's Silver Star")]
+    // A volume glued to the name with no separator must still let the title fire.
+    [InlineData("butcherbakertherighteousmakervol1", "Butcher Baker, the Righteous Maker Vol. 01")]
+    // An edition tag glued straight onto the title ("...geniesdlxed").
+    [InlineData("eightbilliongeniesdlxed_vol1", "Eight Billion Genies Vol. 01 (Deluxe Edition)")]
+    // The publisher tacked onto the end ("_image") is an export tag, not a subtitle.
+    [InlineData("home_image", "Home")]
     public void ProducesExpectedName(string stem, string expected) =>
+        Assert.Equal(expected, TestEngine.FinalName(stem));
+
+    [Theory]
+    // A volume welded to the name with no separator, in each of its spellings, must be
+    // peeled so the stem can match a known title rather than falling to the splitter.
+    [InlineData("thewalkingdeadvol5", "The Walking Dead Vol. 05")]
+    [InlineData("nailbitervolume2", "Nailbiter Vol. 02")]
+    [InlineData("LockeandKeyv1", "Locke & Key Vol. 01")]
+    public void PeelsVolumeGluedWithoutSeparator(string stem, string expected) =>
         Assert.Equal(expected, TestEngine.FinalName(stem));
 
     [Theory]
@@ -116,6 +150,9 @@ public class FilenameParserTests
     [InlineData("Crochet Ragdolls")]
     [InlineData("Easy Crochet Dishcloths")]
     [InlineData("Snuggle and Play Crochet")]
+    // A lexicon title whose rendered "The" is absent from the slug's key: keying both
+    // "unchosen" and "theunchosen" keeps it from reading as a clipped final word.
+    [InlineData("unchosen_vol1")]
     public void DoesNotFlagCompleteTitles(string stem) =>
         Assert.False(TestEngine.Parse(stem).LooksTruncated);
 

@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using HumbleRename.Lookup;
 using HumbleRename.Naming;
 using HumbleRename.Renaming;
@@ -402,7 +404,7 @@ public sealed class InteractiveSession
             }
 
             ConsoleUi.WritePlan(plan);
-            ReviewPlan(plan);
+            await ReviewPlanAsync(plan, planner, lookup, cancellationToken);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException)
         {
@@ -416,26 +418,323 @@ public sealed class InteractiveSession
         }
     }
 
-    /// <summary>Offers the apply/back choice once the preview is on screen.</summary>
-    private void ReviewPlan(RenamePlan plan)
+    /// <summary>
+    /// Offers the save / hand-review / back choice once the preview is on screen. Every
+    /// scanned file is eligible for hand-review, so it is offered even when nothing would
+    /// change by default.
+    /// </summary>
+    private async Task ReviewPlanAsync(
+        RenamePlan plan,
+        RenamePlanner planner,
+        LookupService? scanLookup,
+        CancellationToken cancellationToken)
+    {
+        if (plan.ChangeCount == 0)
+        {
+            ConsoleUi.Section("All Correct");
+            ConsoleUi.Muted("  Every file already matches its preferred name.");
+            ConsoleUi.MenuItem("H", "Hand-review each file anyway");
+            ConsoleUi.MenuItem("B", "Back to the menu");
+            ConsoleUi.Prompt("Choose");
+
+            if (ConsoleUi.ReadChoice() == 'H')
+            {
+                await RunHandReviewAsync(plan, planner, scanLookup, cancellationToken);
+            }
+            else
+            {
+                Console.WriteLine();
+                ConsoleUi.Muted("  Nothing was changed.");
+                ConsoleUi.Pause();
+            }
+
+            return;
+        }
+
+        ConsoleUi.Section("Save?");
+        ConsoleUi.MenuItem("A", $"Save these {plan.ChangeCount} rename(s)");
+        ConsoleUi.MenuItem("H", "Hand-review each file, one at a time");
+        ConsoleUi.MenuItem("B", "Back to the menu, change nothing");
+        ConsoleUi.Prompt("Choose");
+
+        switch (ConsoleUi.ReadChoice())
+        {
+            case 'A':
+                ApplyPlan(plan);
+                break;
+            case 'H':
+                await RunHandReviewAsync(plan, planner, scanLookup, cancellationToken);
+                break;
+            default:
+                Console.WriteLine();
+                ConsoleUi.Muted("  Nothing was changed.");
+                ConsoleUi.Pause();
+                break;
+        }
+    }
+
+    /// <summary>Hand-reviews the plan, shows the revised list, then applies it.</summary>
+    private async Task RunHandReviewAsync(
+        RenamePlan plan,
+        RenamePlanner planner,
+        LookupService? scanLookup,
+        CancellationToken cancellationToken)
+    {
+        var revised = await HandReviewAsync(plan, planner, scanLookup, cancellationToken);
+        ConsoleUi.TryClear();
+        ConsoleUi.WritePlan(revised);
+        ApplyPlan(revised);
+    }
+
+    /// <summary>
+    /// Walks every file, showing the different names the tool derived so the user can
+    /// pick one, type their own, look it up online, or keep the current name, then
+    /// returns a revised plan.
+    /// </summary>
+    private async Task<RenamePlan> HandReviewAsync(
+        RenamePlan plan,
+        RenamePlanner planner,
+        LookupService? scanLookup,
+        CancellationToken cancellationToken)
+    {
+        var chosen = new Dictionary<int, string>();
+
+        // Reuse the scan's catalogue connection when online was on; otherwise open one
+        // lazily the first time the user asks, and dispose only what we opened here.
+        var lookup = scanLookup;
+        var createdLookup = false;
+
+        try
+        {
+            for (var i = 0; i < plan.Actions.Count; i++)
+            {
+                var action = plan.Actions[i];
+                var candidates = new List<NameCandidate>(DisplayCandidates(action));
+
+                // The highlighted default is whichever candidate the scan settled on.
+                var defaultIndex = 0;
+                for (var c = 0; c < candidates.Count; c++)
+                {
+                    if (string.Equals(candidates[c].Name, action.ProposedName, StringComparison.Ordinal))
+                    {
+                        defaultIndex = c;
+                        break;
+                    }
+                }
+
+                var decided = false;
+                while (!decided)
+                {
+                    ConsoleUi.TryClear();
+                    SplashScreen.ShowCompact(_version);
+                    DrawReviewFile(i + 1, plan.Actions.Count, action, candidates, defaultIndex);
+
+                    var key = ConsoleUi.ReadChoice();
+
+                    if (key is '\r' or '\n' or '\0')
+                    {
+                        chosen[i] = BaseNameOf(candidates[defaultIndex].Name);
+                        decided = true;
+                    }
+                    else if (key == 'E')
+                    {
+                        var custom = PromptForCustomName(action.OriginalName);
+                        if (custom is not null)
+                        {
+                            chosen[i] = custom;
+                            decided = true;
+                        }
+                    }
+                    else if (key == 'S')
+                    {
+                        chosen[i] = Path.GetFileNameWithoutExtension(action.OriginalName);
+                        decided = true;
+                    }
+                    else if (key == 'O')
+                    {
+                        // Look at the actual file before deciding; stay on it afterwards.
+                        OpenInDefaultViewer(action.OriginalPath);
+                    }
+                    else if (key == 'L')
+                    {
+                        if (lookup is null)
+                        {
+                            lookup = LookupService.Create();
+                            createdLookup = true;
+                        }
+
+                        var added = await AddOnlineCandidateAsync(
+                            planner, lookup, action, candidates, cancellationToken);
+                        if (added >= 0)
+                        {
+                            defaultIndex = added; // highlight the freshly fetched name
+                        }
+                    }
+                    else if (key == 'Q')
+                    {
+                        // Finish now: files not yet reached keep their scan proposal.
+                        return RenamePlanner.RebuildWithChosenNames(plan, chosen);
+                    }
+                    else if (char.IsDigit(key))
+                    {
+                        var pick = key - '1';
+                        if (pick >= 0 && pick < candidates.Count)
+                        {
+                            chosen[i] = BaseNameOf(candidates[pick].Name);
+                            decided = true;
+                        }
+                    }
+                }
+            }
+
+            return RenamePlanner.RebuildWithChosenNames(plan, chosen);
+        }
+        finally
+        {
+            if (createdLookup)
+            {
+                lookup!.Dispose();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Looks the current file up online and appends a confident match to its candidate
+    /// list. Returns the index to highlight, or -1 when nothing usable came back.
+    /// </summary>
+    private static async Task<int> AddOnlineCandidateAsync(
+        RenamePlanner planner,
+        LookupService lookup,
+        RenameAction action,
+        List<NameCandidate> candidates,
+        CancellationToken cancellationToken)
+    {
+        Console.WriteLine();
+        ConsoleUi.Muted("  Looking online...");
+
+        // Providers swallow their own network and parse failures, so this returns null
+        // rather than throwing when a catalogue is unreachable or has nothing confident.
+        var candidate = await planner.LookUpOnlineAsync(action, lookup, cancellationToken);
+        if (candidate is null)
+        {
+            ConsoleUi.Warn("  No confident match found online.");
+            ConsoleUi.Pause();
+            return -1;
+        }
+
+        // If that exact name is already listed, just point the highlight at it.
+        for (var c = 0; c < candidates.Count; c++)
+        {
+            if (string.Equals(candidates[c].Name, candidate.Name, StringComparison.Ordinal))
+            {
+                return c;
+            }
+        }
+
+        candidates.Add(candidate);
+        return candidates.Count - 1;
+    }
+
+    private static IReadOnlyList<NameCandidate> DisplayCandidates(RenameAction action) =>
+        action.Candidates.Count > 0
+            ? action.Candidates
+            : [new NameCandidate { Label = "keep current name", Name = action.OriginalName }];
+
+    private static void DrawReviewFile(
+        int position,
+        int total,
+        RenameAction action,
+        IReadOnlyList<NameCandidate> candidates,
+        int defaultIndex)
+    {
+        ConsoleUi.Section($"Hand-Review  {position} of {total}");
+
+        Console.Write("   ");
+        ConsoleUi.WriteLine(action.OriginalName, ConsoleColor.DarkYellow);
+        Console.WriteLine();
+
+        for (var c = 0; c < candidates.Count; c++)
+        {
+            var candidate = candidates[c];
+            var isDefault = c == defaultIndex;
+
+            ConsoleUi.Write(isDefault ? "   > [" : "     [", ConsoleColor.DarkGray);
+            ConsoleUi.Write((c + 1).ToString(), ConsoleColor.Yellow);
+            ConsoleUi.Write("]  ", ConsoleColor.DarkGray);
+            ConsoleUi.Write(candidate.Name, isDefault ? ConsoleColor.Green : ConsoleColor.Gray);
+            ConsoleUi.WriteLine($"   {candidate.Label}", ConsoleColor.DarkGray);
+        }
+
+        Console.WriteLine();
+        ConsoleUi.MenuItem("O", "Open the file in its default app");
+        ConsoleUi.MenuItem("L", "Look it up in the online catalogues");
+        ConsoleUi.MenuItem("E", "Type my own name");
+        ConsoleUi.MenuItem("S", "Skip - keep the current name");
+        ConsoleUi.MenuItem("Q", "Finish review, keep the rest as previewed");
+        ConsoleUi.Muted("  A number picks a name; Enter takes the highlighted one.");
+        ConsoleUi.Prompt("Choose");
+    }
+
+    /// <summary>
+    /// Opens a file with whatever application the OS has associated with its type, so a
+    /// reviewer can see what it actually is before naming it. Failures are reported, not
+    /// thrown — a missing association must not derail the review.
+    /// </summary>
+    private static void OpenInDefaultViewer(string path)
+    {
+        try
+        {
+            // UseShellExecute lets the shell pick the registered viewer for the type.
+            using var process = Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException
+                                       or FileNotFoundException or PlatformNotSupportedException)
+        {
+            Console.WriteLine();
+            ConsoleUi.Error($"  Could not open the file: {ex.Message}");
+            ConsoleUi.Pause();
+        }
+    }
+
+    /// <summary>Prompts for a hand-typed name, returning the sanitised stem or null if cancelled.</summary>
+    private static string? PromptForCustomName(string originalName)
+    {
+        var extension = Path.GetExtension(originalName);
+
+        Console.WriteLine();
+        if (extension.Length > 0)
+        {
+            ConsoleUi.Muted($"  The {extension} extension is added for you.");
+        }
+
+        ConsoleUi.Write("  New name (blank to cancel): ", ConsoleColor.White);
+        var input = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return null;
+        }
+
+        var trimmed = input.Trim();
+
+        // Forgive a typed-in extension so it is not doubled.
+        if (extension.Length > 0 && trimmed.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed[..^extension.Length];
+        }
+
+        var safe = PathSafety.MakeSafeFileName(trimmed);
+        return safe.Length > 0 ? safe : null;
+    }
+
+    private static string BaseNameOf(string fileName) => Path.GetFileNameWithoutExtension(fileName);
+
+    /// <summary>Applies a plan, then offers the keep/revert choice while the list is on screen.</summary>
+    private void ApplyPlan(RenamePlan plan)
     {
         if (plan.ChangeCount == 0)
         {
             Console.WriteLine();
-            ConsoleUi.Muted("  Every file is already named correctly.");
-            ConsoleUi.Pause();
-            return;
-        }
-
-        ConsoleUi.Section("Apply?");
-        ConsoleUi.MenuItem("A", $"Apply these {plan.ChangeCount} rename(s)");
-        ConsoleUi.MenuItem("B", "Back to the menu, change nothing");
-        ConsoleUi.Prompt("Choose");
-
-        if (ConsoleUi.ReadChoice() != 'A')
-        {
-            Console.WriteLine();
-            ConsoleUi.Muted("  Nothing was changed.");
+            ConsoleUi.Muted("  Nothing to change.");
             ConsoleUi.Pause();
             return;
         }

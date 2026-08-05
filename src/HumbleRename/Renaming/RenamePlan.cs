@@ -21,6 +21,23 @@ public enum RenameStatus
     Error,
 }
 
+/// <summary>
+/// One name the tool derived for a file, and where it came from. Hand-review lays these
+/// side by side so the user can pick the right derivation per file rather than accepting
+/// the single merged guess.
+/// </summary>
+public sealed record NameCandidate
+{
+    /// <summary>Where this reading came from, e.g. "from filename", "from file metadata".</summary>
+    public required string Label { get; init; }
+
+    /// <summary>The rendered filename, including its extension.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>Which evidence layer produced it.</summary>
+    public MetadataSource Source { get; init; }
+}
+
 /// <summary>One file's proposed change.</summary>
 public sealed record RenameAction
 {
@@ -36,6 +53,12 @@ public sealed record RenameAction
 
     /// <summary>Human-readable explanation shown in the preview (source of the title, warnings).</summary>
     public string? Note { get; init; }
+
+    /// <summary>
+    /// The distinct names the tool derived for this file, most-trusted first; the first
+    /// entry corresponds to <see cref="ProposedName"/>. Offered during hand-review.
+    /// </summary>
+    public IReadOnlyList<NameCandidate> Candidates { get; init; } = [];
 
     public string OriginalPath => Path.Combine(Directory, OriginalName);
 

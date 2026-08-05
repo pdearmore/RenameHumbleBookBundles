@@ -57,8 +57,49 @@ on-screen menus — there is nothing to memorise.
 
 Drag a folder onto the exe to pre-fill entry `[1]`.
 
-Press `S` and it lists every file's current and proposed name, then asks before
-touching anything. Once applied it immediately offers to put everything back.
+Press `S` and it lists every file's current and proposed name, then offers three ways
+forward: save every rename, step through them by hand, or go back and change nothing.
+Once applied it immediately offers to put everything back.
+
+### Hand-review
+
+Choosing hand-review walks the files one at a time. For each, it shows every name it
+derived — from the filename, from the file's own metadata, from an online catalogue —
+and you pick one, type your own, or keep the current name, then it moves to the next.
+
+```
+  ▓▒░ Hand-Review  31 of 59 ░▒▓──────────────────────────────────────
+
+   klikklikboom.pdf
+
+   > [1]  Klik Klik Boom - Cover - New.pdf   from file metadata
+     [2]  Klik Klik Boom.pdf                 from filename
+     [3]  klikklikboom.pdf                   keep current name
+
+   [O]  Open the file in its default app
+   [L]  Look it up in the online catalogues
+   [E]  Type my own name
+   [S]  Skip - keep the current name
+   [Q]  Finish review, keep the rest as previewed
+
+  ▓▒░ Choose ░▒▓ >
+```
+
+Not sure what a file actually is? `O` opens it in whatever viewer the OS uses for that
+type — the PDF reader, the CBZ viewer — and leaves you on the same file to decide.
+
+`L` queries the catalogues for that one file on the spot and adds the best match as a
+new option, so you can reach for the network only on the handful you're unsure about
+rather than turning on lookup for the whole folder. It uses a Comic Vine key if you have
+one set, otherwise Open Library and Google Books, and says so if nothing confident comes
+back. (Unlike a batch `--online` run, this ignores the "is the local guess weak?" gate —
+you asked, so it always looks.)
+
+The highlighted `>` line is what a plain scan would have chosen; press Enter to take it.
+Between them, `L` and typing your own are how you overrule a bad guess — a production
+artefact an exporter left in the metadata, or a title the splitter got wrong — without
+teaching the lexicon anything. Every choice is still applied as one batch with a single
+undo, so `[U]` and the revert offer put the whole set back at once.
 
 ### Name formats
 
