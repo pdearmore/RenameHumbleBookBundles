@@ -1,0 +1,405 @@
+# HumbleRenamer lexicon
+#
+# Sections are [name]; blank lines and lines starting with '#' are ignored.
+# Users can override or extend any section with their own file:
+#   %APPDATA%\HumbleRenamer\lexicon.txt      (or --lexicon <path>)
+# User entries are merged on top of these, so you can correct a bad guess
+# without rebuilding the exe.
+#
+# ---------------------------------------------------------------------------
+# [titles]  key = Proper Title
+#
+# The key is the title with every space, hyphen and punctuation mark removed
+# and lowercased. This is the highest-precision layer: it fires before the
+# word segmenter and settles cases statistics get wrong. "warmother" segments
+# to "warm other" on raw frequency (because "other" is far more common than
+# "mother"), so it is pinned here instead.
+# ---------------------------------------------------------------------------
+[titles]
+30daysofnight = 30 Days of Night
+4001ad = 4001 A.D.
+ahorroranthology = A Horror Anthology
+ajin = Ajin
+ajindemihuman = Ajin: Demi-Human
+armyofdarkness = Army of Darkness
+atraincalledlove = A Train Called Love
+bloodshot = Bloodshot
+bloodshotreborn = Bloodshot Reborn
+bloodshotsalvation = Bloodshot Salvation
+britannia = Britannia
+canyoujustdiemydarling = Can You Just Die, My Darling?
+chillingadventuresofsabrina = Chilling Adventures of Sabrina
+completebattlefield = The Complete Battlefields
+completebattlefields = The Complete Battlefields
+criminal = Criminal
+divinity = Divinity
+doubletapcentermass = Double Tap, Center Mass
+dragonhead = Dragon Head
+eastofwest = East of West
+faithandthefutureforce = Faith and the Future Force
+fromhell = From Hell
+generationzero = Generation Zero
+harbinger = Harbinger
+harbingerrenegade = Harbinger Renegade
+harbingerwars = Harbinger Wars
+heresnegan = Here's Negan
+humbleexclusive = Humble Exclusive
+survivorsguide = The Survivors' Guide
+alloutwar = All Out War
+imageexposampler = Image Expo Sampler
+inthedark = In the Dark
+justapilgrim = Just a Pilgrim
+kasane = Kasane
+lockeandkey = Locke & Key
+madmagazine = MAD Magazine
+nailbiter = Nailbiter
+ninjak = Ninjak
+ninjettes = The Ninjettes
+theninjettes = The Ninjettes
+nowhereman = Nowhere Man
+oblivionsong = Oblivion Song
+parasyte = Parasyte
+predator = Predator
+predatorhunters = Predator: Hunters
+ptsdradio = PTSD Radio
+quantumandwoody = Quantum and Woody
+rapture = Rapture
+redsonja = Red Sonja
+redteam = Red Team
+saga = Saga
+satellitesam = Satellite Sam
+savage = Savage
+secretweapons = Secret Weapons
+shadowman = Shadowman
+shutter = Shutter
+snifterofterror = Snifter of Terror
+spawnorigins = Spawn Origins
+starwars = Star Wars
+starwarslegacy = Star Wars Legacy
+starwarsomnibus = Star Wars Omnibus
+thecalloofthestars = The Call of the Stars
+thecallofthestars = The Call of the Stars
+thecompletetrilogy = The Complete Trilogy
+theactionbible = The Action Bible
+thefuse = The Fuse
+topcowhumblecomicsbundle = Top Cow Humble Comics Bundle
+transformers = Transformers
+transformersvstheterminator = Transformers vs. the Terminator
+undiscoveredcountry = Undiscovered Country
+warmother = War Mother
+whitesand = White Sand
+xomanowar = X-O Manowar
+# --- widely bundled series beyond this folder ---
+thewalkingdead = The Walking Dead
+invincible = Invincible
+theumbrellaacademy = The Umbrella Academy
+apocalypsesuite = Apocalypse Suite
+hellboy = Hellboy
+bprd = B.P.R.D.
+helloneath = Hell on Earth
+sinclty = Sin City
+sincity = Sin City
+vwordfortheundead = V-Word
+ythelastman = Y: The Last Man
+paperprisoners = Paper Prisoners
+descender = Descender
+blacksciencefiction = Black Science
+blackscience = Black Science
+deadlyclass = Deadly Class
+lowlow = Low
+manifestdestiny = Manifest Destiny
+monstress = Monstress
+outcast = Outcast
+paperGirls = Paper Girls
+papergirls = Paper Girls
+revival = Revival
+seconds = Seconds
+sexcriminals = Sex Criminals
+thefade = The Fade
+thewickedandthedivine = The Wicked + The Divine
+wytches = Wytches
+
+# --- Neil Gaiman, a recurring Humble bundle ---
+acalendaroftales = A Calendar of Tales
+adventuresinthedreamtrade = Adventures in the Dream Trade
+afallofstardust = A Fall of Stardust
+americangods = American Gods
+angelsandvisitations = Angels and Visitations
+astudyinemerald = A Study in Emerald
+creaturesofthenight = Creatures of the Night
+harlequinvalentine = Harlequin Valentine
+howtotalktogirlsatparties = How to Talk to Girls at Parties
+miraclemanthegoldenage = Miracleman: The Golden Age
+murdermysteries = Murder Mysteries
+myainsel = My Ainsel
+neverwear = Neverwear
+norsemythology = Norse Mythology
+onlytheendoftheworldagain = Only the End of the World Again
+signaltonoise = Signal to Noise
+snowglassapples = Snow, Glass, Apples
+sweeneytodd = Sweeney Todd
+themomentofthestorm = The Moment of the Storm
+theproblemofsusan = The Problem of Susan
+thesandman = The Sandman
+sandman = The Sandman
+trollbridge = Troll Bridge
+violentcases = Violent Cases
+
+# ---------------------------------------------------------------------------
+# [authors]  key = Proper Name
+#
+# Humble bundles are frequently built around one author, whose name is glued to
+# the front of every filename: "neilgaimanstrollbridge". Listing the name lets
+# the parser peel it off and, crucially, recognise the possessive 's' that would
+# otherwise be swallowed into the title ("Stroll Bridge" for "'s Troll Bridge").
+# ---------------------------------------------------------------------------
+[authors]
+neilgaiman = Neil Gaiman
+alanmoore = Alan Moore
+briankvaughan = Brian K. Vaughan
+warrenellis = Warren Ellis
+grantmorrison = Grant Morrison
+garthennis = Garth Ennis
+mikemignola = Mike Mignola
+robertkirkman = Robert Kirkman
+joshuawilliamson = Joshua Williamson
+mattfraction = Matt Fraction
+edbrubaker = Ed Brubaker
+jefflemire = Jeff Lemire
+brandonsanderson = Brandon Sanderson
+terrypratchett = Terry Pratchett
+
+# ---------------------------------------------------------------------------
+# [words]
+#
+# Proper nouns fed to the segmenter with the weight of an uncommon real word,
+# so a name like "harbingerrenegade" splits correctly even without a [titles]
+# entry. Keep these lowercase and single-token.
+# ---------------------------------------------------------------------------
+[words]
+ainsel
+negan
+michonne
+gaiman
+heliogabolous
+oconnor
+snellings
+vess
+fishie
+neverwear
+tulips
+miscellany
+portfolio
+ajin
+armor
+batman
+bloodshot
+britannia
+capullo
+catwoman
+darkhorse
+deadpool
+demi
+divinity
+faith
+harbinger
+hellboy
+hulk
+kasane
+manowar
+nailbiter
+ninjak
+ninjette
+ninjettes
+omnibus
+parasyte
+pilgrim
+predator
+rapture
+renegade
+sabrina
+sampler
+shadowman
+sonja
+spawn
+terminator
+transformers
+valiant
+vertigo
+witchblade
+wolverine
+sandman
+punisher
+daredevil
+thanos
+starlord
+gamora
+drax
+sabretooth
+magneto
+mystique
+juggernaut
+cyclops
+storm
+rogue
+gambit
+colossus
+nightcrawler
+beast
+phoenix
+apocalypse
+sentinel
+avengers
+defenders
+inhumans
+eternals
+klaus
+umbrella
+
+# ---------------------------------------------------------------------------
+# [uppercase]  tokens that are acronyms and must render in caps
+# ---------------------------------------------------------------------------
+[uppercase]
+ptsd
+mad
+ufo
+fbi
+cia
+nasa
+usa
+uk
+us
+tv
+dc
+gi
+rip
+shield
+hydra
+swat
+nypd
+lapd
+bc
+ad
+xiii
+oz
+
+# ---------------------------------------------------------------------------
+# [smallwords]  lowercased inside a title unless first or last word (AP style)
+# ---------------------------------------------------------------------------
+[smallwords]
+a
+an
+and
+as
+at
+but
+by
+for
+from
+if
+in
+into
+nor
+of
+on
+onto
+or
+over
+per
+so
+the
+to
+up
+upon
+via
+vs
+with
+yet
+
+# ---------------------------------------------------------------------------
+# [junk]
+#
+# Tokens carrying no title information. Removed wholesale from the name.
+# Mostly Humble/Calibre export artefacts and comic scene-release tags.
+# ---------------------------------------------------------------------------
+[junk]
+ebook
+ebooks
+digital
+digitalempire
+empire
+minutemen
+dcp
+c2c
+webrip
+web
+dl
+hd
+sd
+scan
+scanned
+retail
+repack
+final
+complete-digital
+theproletariat
+zone
+novus
+phantom
+darkness-empire
+sonofultron
+thegroup
+thelastkryptonian
+bchry
+hourman
+requiem
+cbr
+cbz
+pdf
+epub
+mobi
+azw3
+unknown
+untitled
+nodrm
+drmfree
+humblebundle
+bundle-file
+
+# ---------------------------------------------------------------------------
+# [editions]  key = Rendered Edition
+#
+# Recognised edition/format markers. Kept (rendered) rather than discarded,
+# because "Deluxe Edition" and "Book 1" genuinely distinguish releases.
+# ---------------------------------------------------------------------------
+[editions]
+deluxeedition = Deluxe Edition
+deluxe = Deluxe Edition
+absoluteedition = Absolute Edition
+collection = Collection
+completeedition = Complete Edition
+hardcover = Hardcover
+humbleexclusive = Humble Exclusive
+oneshot = One-Shot
+annual = Annual
+special = Special
+season1 = Season One
+season2 = Season Two
+season3 = Season Three
+firstedition = First Edition
+secondedition = Second Edition
+thirdedition = Third Edition
+1stedition = First Edition
+2ndedition = Second Edition
+3rdedition = Third Edition
+4thedition = Fourth Edition
+anniversaryedition = Anniversary Edition
+apedition = AP Edition
+artistproofedition = Artist Proof Edition
+graphicnovel = Graphic Novel
+preview = Preview
+tp = Trade Paperback
+tpb = Trade Paperback
+hc = Hardcover
+gn = Graphic Novel
+sc = Softcover

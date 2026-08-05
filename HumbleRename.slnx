@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HumbleRename/HumbleRename.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HumbleRename.Tests/HumbleRename.Tests.csproj" />
+  </Folder>
+</Solution>
