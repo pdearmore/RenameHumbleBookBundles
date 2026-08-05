@@ -42,7 +42,10 @@ generationzero = Generation Zero
 harbinger = Harbinger
 harbingerrenegade = Harbinger Renegade
 harbingerwars = Harbinger Wars
+heresnegan = Here's Negan
 humbleexclusive = Humble Exclusive
+survivorsguide = The Survivors' Guide
+alloutwar = All Out War
 imageexposampler = Image Expo Sampler
 inthedark = In the Dark
 justapilgrim = Just a Pilgrim
@@ -175,6 +178,8 @@ terrypratchett = Terry Pratchett
 # ---------------------------------------------------------------------------
 [words]
 ainsel
+negan
+michonne
 gaiman
 heliogabolous
 oconnor
@@ -389,6 +394,8 @@ thirdedition = Third Edition
 3rdedition = Third Edition
 4thedition = Fourth Edition
 anniversaryedition = Anniversary Edition
+apedition = AP Edition
+artistproofedition = Artist Proof Edition
 graphicnovel = Graphic Novel
 preview = Preview
 tp = Trade Paperback

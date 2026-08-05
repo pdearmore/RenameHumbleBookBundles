@@ -108,6 +108,10 @@ public class FilenameParserTests
     [InlineData("ajin_demihuman_vol1")]
     [InlineData("chillingadventuresofsabrina_vol1")]
     [InlineData("The Call Of The Stars (1978)")]
+    // An initialism is a complete title, not a word clipped short.
+    [InlineData("thewalkingdead_fcbd")]
+    // Supplied verbatim by the lexicon, so complete however odd the last word looks.
+    [InlineData("thewalkingdead_heresnegan")]
     public void DoesNotFlagCompleteTitles(string stem) =>
         Assert.False(TestEngine.Parse(stem).LooksTruncated);
 
@@ -152,6 +156,22 @@ public class FilenameParserTests
     [InlineData("anhonestanswerandotherstories1442260106", "An Honest Answer and Other Stories")]
     [InlineData("feedersandeatersandotherstories1442343441", "Feeders and Eaters and Other Stories")]
     public void StripsGluedAssetIds(string stem, string expected) =>
+        Assert.Equal(expected, TestEngine.FinalName(stem));
+
+    [Theory]
+    // A short vowel-free run is an initialism, not two words to be split apart.
+    [InlineData("thewalkingdead_fcbd", "The Walking Dead - FCBD")]
+    [InlineData("thewalkingdead_heresnegan", "The Walking Dead - Here's Negan")]
+    [InlineData("thewalkingdead_survivorsguide", "The Walking Dead - The Survivors' Guide")]
+    [InlineData("thewalkingdead_alloutwarapedition", "The Walking Dead - All Out War (AP Edition)")]
+    public void HandlesSpecialEditionsAndInitialisms(string stem, string expected) =>
+        Assert.Equal(expected, TestEngine.FinalName(stem));
+
+    [Theory]
+    [InlineData("thewalkingdead_vol1", "The Walking Dead Vol. 01")]
+    [InlineData("thewalkingdead_vol9", "The Walking Dead Vol. 09")]
+    [InlineData("thewalkingdead_vol32", "The Walking Dead Vol. 32")]
+    public void PadsVolumeNumbersConsistently(string stem, string expected) =>
         Assert.Equal(expected, TestEngine.FinalName(stem));
 
     [Fact]

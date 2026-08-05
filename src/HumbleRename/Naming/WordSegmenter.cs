@@ -85,6 +85,34 @@ public sealed class WordSegmenter
         !string.IsNullOrEmpty(word) && _logProbability.ContainsKey(word.ToLowerInvariant());
 
     /// <summary>
+    /// True for a short run of letters with no vowel in it, which in a filename is
+    /// almost always an initialism rather than words.
+    /// </summary>
+    /// <remarks>
+    /// Without this, "fcbd" (Free Comic Book Day) is happily split into "fc bd" and
+    /// title-cased to "Fc Bd". English has essentially no vowel-free words at this
+    /// length, so the rule is safe; anything the corpus does recognise is excluded
+    /// regardless.
+    /// </remarks>
+    public bool IsLikelyAcronym(string word)
+    {
+        if (string.IsNullOrEmpty(word) || word.Length is < 2 or > 5)
+        {
+            return false;
+        }
+
+        foreach (var c in word)
+        {
+            if (!char.IsAsciiLetter(c) || "aeiou".Contains(char.ToLowerInvariant(c)))
+            {
+                return false;
+            }
+        }
+
+        return !IsKnownWord(word);
+    }
+
+    /// <summary>
     /// Segments a single run of letters. Input should already be lowercased and
     /// stripped of separators; anything non-alphanumeric is returned untouched.
     /// </summary>

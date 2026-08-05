@@ -32,6 +32,23 @@ public class WordSegmenterTests
         Assert.False(TestEngine.Current.Segmenter.IsKnownWord("zzzqqxx"));
     }
 
+    [Theory]
+    [InlineData("fcbd")]
+    [InlineData("bprd")]
+    public void TreatsShortVowelFreeRunsAsInitialisms(string word) =>
+        Assert.True(TestEngine.Current.Segmenter.IsLikelyAcronym(word));
+
+    [Theory]
+    [InlineData("dead")]      // has vowels
+    [InlineData("a")]         // too short
+    [InlineData("strengths")] // too long
+    [InlineData("why")]       // a real word, however vowel-free
+    // "tpb" reaches the corpus as a real token, so the known-word guard excludes it.
+    // That is the desired outcome: it is an edition marker, handled by the lexicon.
+    [InlineData("tpb")]
+    public void DoesNotMistakeOrdinaryWordsForInitialisms(string word) =>
+        Assert.False(TestEngine.Current.Segmenter.IsLikelyAcronym(word));
+
     [Fact]
     public void EmptyInputProducesNoWords() =>
         Assert.Empty(TestEngine.Current.Segmenter.Segment("   "));

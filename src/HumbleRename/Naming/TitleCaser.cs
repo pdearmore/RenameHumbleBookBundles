@@ -162,6 +162,12 @@ public sealed partial class TitleCaser
             return word.ToUpperInvariant();
         }
 
+        // A short vowel-free run is an initialism: FCBD, BPRD, TPB.
+        if (_segmenter?.IsLikelyAcronym(lower) == true)
+        {
+            return word.ToUpperInvariant();
+        }
+
         // Roman numerals, but only when the letters do not also spell a real word.
         // Without that guard "mix" and "did" would be shouted as numerals.
         if (RomanNumeralPattern().IsMatch(lower) && !IsDictionaryWord(lower))

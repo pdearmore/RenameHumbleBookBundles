@@ -654,7 +654,10 @@ public sealed partial class FilenameParser
                     builder.Append(' ');
                 }
 
-                builder.Append(literal ? text : _segmenter.SegmentToString(text));
+                // An initialism has to survive intact; the splitter would shred
+                // "fcbd" into "fc bd" given the chance.
+                var keepWhole = literal || _segmenter.IsLikelyAcronym(text);
+                builder.Append(keepWhole ? text : _segmenter.SegmentToString(text));
             }
 
             rendered.Add(builder.ToString());
@@ -822,6 +825,14 @@ public sealed partial class FilenameParser
             return false;
         }
 
+        // A title the lexicon supplied verbatim is complete by definition, however
+        // unfamiliar its last word looks. "Here's Negan" ends in a character name the
+        // corpus has never seen, but it is not clipped.
+        if (_lexicon.Titles.ContainsKey(Lexicon.Key(text)))
+        {
+            return false;
+        }
+
         var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (words.Length == 0)
         {
@@ -850,9 +861,11 @@ public sealed partial class FilenameParser
         }
 
         // Otherwise: an unrecognised final word that is not a known proper noun.
+        // An initialism such as FCBD is complete, not a clipped word.
         var recognised = _segmenter.IsKnownWord(last) ||
                          _lexicon.Words.Contains(last) ||
                          _lexicon.Uppercase.Contains(last) ||
+                         _segmenter.IsLikelyAcronym(last) ||
                          last.Any(char.IsAsciiDigit);
 
         return !recognised && last.Length >= 4;
