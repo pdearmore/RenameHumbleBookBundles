@@ -149,7 +149,7 @@ public sealed class CommandLineOptions
                 default:
                     if (arg.StartsWith('-'))
                     {
-                        error = $"Unknown option '{arg}'. Run hbrename --help for the full list.";
+                        error = $"Unknown option '{arg}'. Run HumbleRenamer --help for the full list.";
                         return false;
                     }
 
@@ -212,12 +212,12 @@ public sealed class CommandLineOptions
     }
 
     public const string HelpText = """
-        hbrename — rename Humble Bundle comics and ebooks to proper titles.
+        HumbleRenamer — rename Humble Bundle comics and ebooks to proper titles.
 
         USAGE
-          hbrename [folder] [options]
+          HumbleRenamer [folder] [options]
 
-        If no folder is given, hbrename asks for one.
+        If no folder is given, HumbleRenamer asks for one.
         Nothing is renamed until you see the full before/after list and confirm.
 
         OPTIONS
@@ -230,8 +230,8 @@ public sealed class CommandLineOptions
           -r, --recurse          Include subfolders.
           -o, --online           Consult online catalogues for missing or clipped titles.
               --confidence <n>   Minimum match confidence, 0-1. Default 0.72.
-              --comicvine-key <k>  Comic Vine API key (or set HBRENAME_COMICVINE_KEY).
-              --google-key <k>     Google Books API key (or set HBRENAME_GOOGLE_BOOKS_KEY).
+              --comicvine-key <k>  Comic Vine API key (or set HUMBLERENAMER_COMICVINE_KEY).
+              --google-key <k>     Google Books API key (or set HUMBLERENAMER_GOOGLE_BOOKS_KEY).
               --no-metadata      Do not read metadata from inside files.
               --hydrate          Download cloud-only files so their metadata can be read.
           -e, --ext <list>       Extensions to include, e.g. --ext cbz,cbr,pdf
@@ -244,13 +244,13 @@ public sealed class CommandLineOptions
               --version          Version number.
 
         EXAMPLES
-          hbrename
-          hbrename "D:\Comics\Humble Bundle"
-          hbrename D:\Comics --recurse --online
-          hbrename D:\Comics --template "{Series}[ v{Volume:00}][ ({Year})]"
-          hbrename D:\Comics --undo
+          HumbleRenamer
+          HumbleRenamer "D:\Comics\Humble Bundle"
+          HumbleRenamer D:\Comics --recurse --online
+          HumbleRenamer D:\Comics --template "{Series}[ v{Volume:00}][ ({Year})]"
+          HumbleRenamer D:\Comics --undo
 
-        Your own titles can be added to %APPDATA%\hbrename\lexicon.txt — see the
+        Your own titles can be added to %APPDATA%\HumbleRenamer\lexicon.txt — see the
         [titles] section of the built-in lexicon for the format.
         """;
 }

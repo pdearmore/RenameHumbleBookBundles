@@ -5,7 +5,7 @@ namespace HumbleRename.Lookup;
 /// <summary>
 /// Comic Vine volume search — by far the best source for comics specifically, but it
 /// requires a free API key. Supply one via <c>--comicvine-key</c> or the
-/// <c>HBRENAME_COMICVINE_KEY</c> environment variable; without it the provider stays idle.
+/// <c>HUMBLERENAMER_COMICVINE_KEY</c> environment variable; without it the provider stays idle.
 /// </summary>
 public sealed class ComicVineProvider : HttpLookupProvider
 {
@@ -15,7 +15,7 @@ public sealed class ComicVineProvider : HttpLookupProvider
 
     public ComicVineProvider(HttpClient client, string? apiKey = null) : base(client) =>
         _apiKey = string.IsNullOrWhiteSpace(apiKey)
-            ? Environment.GetEnvironmentVariable("HBRENAME_COMICVINE_KEY")
+            ? Environment.GetEnvironmentVariable("HUMBLERENAMER_COMICVINE_KEY")
             : apiKey;
 
     public override string Name => "comicvine";

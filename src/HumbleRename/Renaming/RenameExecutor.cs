@@ -37,7 +37,7 @@ public static class RenameExecutor
                 {
                     var temporary = Path.Combine(
                         action.Directory,
-                        action.OriginalName + ".hbrename-tmp");
+                        action.OriginalName + ".humblerenamer-tmp");
 
                     File.Move(action.OriginalPath, temporary);
                     File.Move(temporary, action.ProposedPath);
@@ -126,7 +126,7 @@ public static class RenameExecutor
                 if (string.Equals(entry.To, entry.From, StringComparison.OrdinalIgnoreCase) &&
                     !string.Equals(entry.To, entry.From, StringComparison.Ordinal))
                 {
-                    var temporary = current + ".hbrename-tmp";
+                    var temporary = current + ".humblerenamer-tmp";
                     File.Move(current, temporary);
                     File.Move(temporary, original);
                 }

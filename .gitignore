@@ -52,7 +52,7 @@ Desktop.ini
 $RECYCLE.BIN/
 .DS_Store
 
-## hbrename runtime state — never commit a user's rename history or lookup cache
-*.hbrename-undo.json
-.hbrename/
+## HumbleRenamer runtime state — never commit a user's rename history or lookup cache
+*.humblerenamer-undo.json
+.humblerenamer/
 lookup-cache.json

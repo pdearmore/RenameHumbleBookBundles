@@ -93,11 +93,11 @@ public sealed class Lexicon
         return lexicon;
     }
 
-    /// <summary>%APPDATA%\hbrename\lexicon.txt — created by the user, never by us.</summary>
+    /// <summary>%APPDATA%\HumbleRenamer\lexicon.txt — created by the user, never by us.</summary>
     public static string DefaultUserLexiconPath() =>
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "hbrename",
+            "HumbleRenamer",
             "lexicon.txt");
 
     private void Merge(TextReader reader)

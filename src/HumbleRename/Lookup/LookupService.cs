@@ -58,7 +58,7 @@ public sealed class LookupService : IDisposable
 
         // Comic Vine rejects requests without a descriptive user agent.
         client.DefaultRequestHeaders.UserAgent.Add(
-            new ProductInfoHeaderValue("hbrename", "1.0"));
+            new ProductInfoHeaderValue("HumbleRenamer", "1.0"));
         client.DefaultRequestHeaders.Accept.Add(
             new MediaTypeWithQualityHeaderValue("application/json"));
 

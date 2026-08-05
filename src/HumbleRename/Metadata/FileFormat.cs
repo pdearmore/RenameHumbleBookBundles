@@ -2,7 +2,7 @@ using System.Text;
 
 namespace HumbleRename.Metadata;
 
-/// <summary>Container formats hbrename can look inside.</summary>
+/// <summary>Container formats HumbleRenamer can look inside.</summary>
 public enum FileFormat
 {
     Unknown = 0,

@@ -11,7 +11,7 @@ public class RenameRoundTripTests : IDisposable
 
     public RenameRoundTripTests()
     {
-        _folder = Path.Combine(Path.GetTempPath(), "hbrename-tests-" + Guid.NewGuid().ToString("N"));
+        _folder = Path.Combine(Path.GetTempPath(), "humblerenamer-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_folder);
     }
 

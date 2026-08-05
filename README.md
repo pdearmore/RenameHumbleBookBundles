@@ -1,7 +1,7 @@
 # RenameHumbleBookBundles
 
 Windows C# command line executable to give Humble book bundle files better filenames.
-Builds to a single self-contained `hbrename.exe`.
+Builds to a single self-contained `HumbleRenamer.exe`.
 
 Humble's DRM-free downloads arrive lowercased and run together, with download ids and
 export artefacts glued on. This turns them back into something readable — and into
@@ -24,17 +24,17 @@ and every run can be undone.
 
 ## Getting it
 
-Build a standalone `hbrename.exe` — no .NET install needed to run the result:
+Build a standalone `HumbleRenamer.exe` — no .NET install needed to run the result:
 
 ```powershell
 .\build.ps1
 ```
 
-The executable lands in `.\publish\hbrename.exe`. Requires the .NET 10 SDK to build.
+The executable lands in `.\publish\HumbleRenamer.exe`. Requires the .NET 10 SDK to build.
 
 ## Using it
 
-Double-click `hbrename.exe`, or run it with no arguments. Everything is chosen from
+Double-click `HumbleRenamer.exe`, or run it with no arguments. Everything is chosen from
 on-screen menus — there is nothing to memorise.
 
 ```
@@ -85,10 +85,10 @@ The menus are the point, but every setting is also a switch, so the same binary 
 driven from a script or scheduled task. Passing **any** switch skips the menus entirely.
 
 ```powershell
-hbrename D:\Comics --recurse --online
-hbrename D:\Comics --dry-run              # preview and stop
-hbrename D:\Comics --undo                 # put the last run back
-hbrename D:\Books --template "{Title}[ - {Author}][ ({Year})]" --yes
+HumbleRenamer D:\Comics --recurse --online
+HumbleRenamer D:\Comics --dry-run              # preview and stop
+HumbleRenamer D:\Comics --undo                 # put the last run back
+HumbleRenamer D:\Books --template "{Title}[ - {Author}][ ({Year})]" --yes
 ```
 
 ### Options
@@ -163,11 +163,11 @@ Both keyless providers work without configuration, but Google Books throttles by
 address and Comic Vine needs a free key. Either can be supplied by flag or environment:
 
 ```powershell
-$env:HBRENAME_COMICVINE_KEY    = 'your-key'   # much better for comics specifically
-$env:HBRENAME_GOOGLE_BOOKS_KEY = 'your-key'
+$env:HUMBLERENAMER_COMICVINE_KEY    = 'your-key'   # much better for comics specifically
+$env:HUMBLERENAMER_GOOGLE_BOOKS_KEY = 'your-key'
 ```
 
-Responses are cached in `%LOCALAPPDATA%\hbrename\lookup-cache.json`, including
+Responses are cached in `%LOCALAPPDATA%\HumbleRenamer\lookup-cache.json`, including
 misses, so a second run over the same folder does not re-ask.
 
 ## Templates
@@ -184,13 +184,13 @@ is what lets one template serve files with a volume, files with an issue, and fi
 with neither.
 
 ```powershell
-hbrename D:\Comics --template "{Series}[ v{Volume:00}][ ({Year})]"
-hbrename D:\Comics --template "{Author} - {Series}[ ({Year})]"
+HumbleRenamer D:\Comics --template "{Series}[ v{Volume:00}][ ({Year})]"
+HumbleRenamer D:\Comics --template "{Author} - {Series}[ ({Year})]"
 ```
 
 ## Teaching it new titles
 
-When a title is guessed wrong, correct it in `%APPDATA%\hbrename\lexicon.txt` rather
+When a title is guessed wrong, correct it in `%APPDATA%\HumbleRenamer\lexicon.txt` rather
 than editing the source. Entries there are merged over the built-in lexicon.
 
 ```ini
@@ -222,11 +222,11 @@ full built-in set.
 
 ## Undoing
 
-Applying writes a hidden `.hbrename-undo.json` into the folder. The tool offers to
+Applying writes a hidden `.humblerenamer-undo.json` into the folder. The tool offers to
 revert immediately after a run, and `--undo` works later:
 
 ```powershell
-hbrename "D:\Comics\Humble Bundle" --undo
+HumbleRenamer "D:\Comics\Humble Bundle" --undo
 ```
 
 ## Supported formats

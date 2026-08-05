@@ -5,7 +5,7 @@ namespace HumbleRename.Lookup;
 
 /// <summary>
 /// Google Books search. Works without a key but throttles per source address, so it
-/// is queried after Open Library. Set <c>HBRENAME_GOOGLE_BOOKS_KEY</c> to raise the quota.
+/// is queried after Open Library. Set <c>HUMBLERENAMER_GOOGLE_BOOKS_KEY</c> to raise the quota.
 /// </summary>
 public sealed class GoogleBooksProvider : HttpLookupProvider
 {
@@ -15,7 +15,7 @@ public sealed class GoogleBooksProvider : HttpLookupProvider
 
     public GoogleBooksProvider(HttpClient client, string? apiKey = null) : base(client) =>
         _apiKey = string.IsNullOrWhiteSpace(apiKey)
-            ? Environment.GetEnvironmentVariable("HBRENAME_GOOGLE_BOOKS_KEY")
+            ? Environment.GetEnvironmentVariable("HUMBLERENAMER_GOOGLE_BOOKS_KEY")
             : apiKey;
 
     public override string Name => "googlebooks";

@@ -23,7 +23,7 @@ public sealed record UndoEntry
 public sealed record UndoLog
 {
     /// <summary>Filename used inside the renamed folder.</summary>
-    public const string FileName = ".hbrename-undo.json";
+    public const string FileName = ".humblerenamer-undo.json";
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {

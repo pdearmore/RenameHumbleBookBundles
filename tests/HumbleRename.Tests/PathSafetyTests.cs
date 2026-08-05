@@ -45,7 +45,7 @@ public class PathSafetyTests
     public void SuffixesNamesAlreadyClaimedInThisRun()
     {
         var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var directory = Path.Combine(Path.GetTempPath(), "hbrename-tests-" + Guid.NewGuid().ToString("N"));
+        var directory = Path.Combine(Path.GetTempPath(), "humblerenamer-tests-" + Guid.NewGuid().ToString("N"));
 
         var first = PathSafety.ResolveCollision(directory, "Saga", ".cbz", claimed);
         var second = PathSafety.ResolveCollision(directory, "Saga", ".cbz", claimed);

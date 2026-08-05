@@ -31,7 +31,7 @@ public sealed record LookupResult
     public double Score { get; set; }
 }
 
-/// <summary>A catalogue hbrename can query for real titles.</summary>
+/// <summary>A catalogue HumbleRenamer can query for real titles.</summary>
 public interface ILookupProvider
 {
     /// <summary>Short name shown in output and used as a cache key prefix.</summary>

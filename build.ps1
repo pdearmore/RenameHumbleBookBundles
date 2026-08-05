@@ -1,11 +1,11 @@
 <#
 .SYNOPSIS
-    Builds hbrename.exe as a single self-contained Windows executable.
+    Builds HumbleRenamer.exe as a single self-contained Windows executable.
 
 .DESCRIPTION
     Produces one .exe with the .NET runtime, the word corpus and the lexicon all
     packed inside, so it runs on a machine with no .NET installed. The result is
-    written to .\publish\hbrename.exe.
+    written to .\publish\HumbleRenamer.exe.
 
 .PARAMETER Runtime
     Target runtime identifier. Defaults to win-x64; use win-arm64 for ARM devices.
@@ -52,12 +52,12 @@ dotnet publish $project `
 
 if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
 
-$exe = Join-Path $output 'hbrename.exe'
+$exe = Join-Path $output 'HumbleRenamer.exe'
 if (Test-Path $exe) {
     $size = [math]::Round((Get-Item $exe).Length / 1MB, 1)
     Write-Host ''
     Write-Host "Built $exe ($size MB)" -ForegroundColor Green
-    Write-Host 'Run it:  .\publish\hbrename.exe    (menus do the rest)' -ForegroundColor DarkGray
+    Write-Host 'Run it:  .\publish\HumbleRenamer.exe    (menus do the rest)' -ForegroundColor DarkGray
 }
 else {
     throw "Expected $exe but it was not produced."

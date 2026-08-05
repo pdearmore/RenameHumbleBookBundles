@@ -1,8 +1,8 @@
-# hbrename lexicon
+# HumbleRenamer lexicon
 #
 # Sections are [name]; blank lines and lines starting with '#' are ignored.
 # Users can override or extend any section with their own file:
-#   %APPDATA%\hbrename\lexicon.txt      (or --lexicon <path>)
+#   %APPDATA%\HumbleRenamer\lexicon.txt      (or --lexicon <path>)
 # User entries are merged on top of these, so you can correct a bad guess
 # without rebuilding the exe.
 #

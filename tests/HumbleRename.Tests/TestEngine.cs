@@ -20,7 +20,7 @@ internal static class TestEngine
     /// Deliberately points nowhere so a lexicon in the developer's own %APPDATA%
     /// cannot change what the tests assert.
     /// </summary>
-    private const string NonExistentPath = @"Z:\hbrename-tests\no-such-lexicon.txt";
+    private const string NonExistentPath = @"Z:\humblerenamer-tests\no-such-lexicon.txt";
 
     public static NamingEngine Current => Instance.Value;
 

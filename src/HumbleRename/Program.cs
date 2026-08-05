@@ -4,7 +4,7 @@ using HumbleRename.Lookup;
 using HumbleRename.Naming;
 using HumbleRename.Renaming;
 
-// hbrename — rename Humble Bundle comics and ebooks to proper titles.
+// HumbleRenamer — rename Humble Bundle comics and ebooks to proper titles.
 //
 // Nothing is written to disk until the full before/after list has been shown and
 // confirmed, and every applied run leaves an undo log behind.
@@ -17,7 +17,7 @@ ConsoleUi.EnableUnicodeOutput();
 
 var appVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
 
-// With no switches given, this is a double-click or a bare `hbrename` from a prompt:
+// With no switches given, this is a double-click or a bare `HumbleRenamer` from a prompt:
 // drive everything from on-screen menus instead. A folder may still be passed (or
 // dragged onto the exe) and it simply pre-fills the first menu entry. Switches are
 // still honoured when present, so scripted use keeps working.
@@ -58,7 +58,7 @@ if (options.Help)
 
 if (options.Version)
 {
-    Console.WriteLine($"hbrename {appVersion}");
+    Console.WriteLine($"HumbleRenamer {appVersion}");
     return ExitOk;
 }
 
@@ -121,7 +121,7 @@ async Task<int> RunAsync(CommandLineOptions cli, CancellationToken cancellationT
 
         if (!providers.Contains("comicvine"))
         {
-            ConsoleUi.Muted("  (set HBRENAME_COMICVINE_KEY for far better comic matching)");
+            ConsoleUi.Muted("  (set HUMBLERENAMER_COMICVINE_KEY for far better comic matching)");
         }
     }
 
@@ -199,7 +199,7 @@ async Task<int> RunAsync(CommandLineOptions cli, CancellationToken cancellationT
             return ExitOk;
         }
 
-        ConsoleUi.Muted($"  Changed your mind later? Run:  hbrename \"{folder}\" --undo");
+        ConsoleUi.Muted($"  Changed your mind later? Run:  HumbleRenamer \"{folder}\" --undo");
         return ExitOk;
     }
     finally
