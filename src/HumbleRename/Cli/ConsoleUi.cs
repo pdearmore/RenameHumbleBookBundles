@@ -201,6 +201,35 @@ public static class ConsoleUi
     }
 
     /// <summary>
+    /// Reads a key for the review screen, returning full key info so the caller can tell
+    /// the arrows and Enter apart — <see cref="ReadChoice"/> flattens them all to '\0'.
+    /// Under redirected input a line stands in: empty is Enter, and ',' / '.' stand in
+    /// for the Left / Right arrows so the flow stays scriptable.
+    /// </summary>
+    public static ConsoleKeyInfo ReadKeyInfo()
+    {
+        if (!Console.IsInputRedirected)
+        {
+            return Console.ReadKey(intercept: true);
+        }
+
+        var line = Console.ReadLine();
+        if (line is null)
+        {
+            // End of scripted input: behave like "finish" so nothing spins.
+            return new ConsoleKeyInfo('Q', ConsoleKey.Q, false, false, false);
+        }
+
+        var trimmed = line.Trim();
+        if (trimmed.Length == 0)
+        {
+            return new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false);
+        }
+
+        return new ConsoleKeyInfo(trimmed[0], default, false, false, false);
+    }
+
+    /// <summary>
     /// Draws a warez-style section rule: ▓▒░ Title ░▒▓────────
     /// </summary>
     /// <remarks>

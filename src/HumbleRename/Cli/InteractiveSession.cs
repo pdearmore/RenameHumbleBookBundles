@@ -46,6 +46,12 @@ public sealed class InteractiveSession
     private bool _readMetadata = true;
     private bool _hydrateCloudFiles;
 
+    /// <summary>Comic Vine key pasted in-session; takes precedence over the environment.</summary>
+    private string? _comicVineKey;
+
+    /// <summary>Where a free Comic Vine API key is created.</summary>
+    private const string ComicVineKeyUrl = "https://comicvine.gamespot.com/api/";
+
     public InteractiveSession(string? initialFolder, string version)
     {
         _version = version;
@@ -114,6 +120,9 @@ public sealed class InteractiveSession
                 case '7':
                     _hydrateCloudFiles = !_hydrateCloudFiles;
                     break;
+                case '8':
+                    ChooseComicVineKey();
+                    break;
                 case 'S':
                     await ScanAsync(cancellationToken);
                     break;
@@ -135,20 +144,42 @@ public sealed class InteractiveSession
         ConsoleUi.MenuItem("1", "Folder", _folder ?? "(not set)");
         ConsoleUi.MenuItem("2", "Name format", TemplateName);
         ConsoleUi.MenuItem("3", "Include subfolders", OnOff(_recurse));
-        ConsoleUi.MenuItem("4", "Online lookup", OnOff(_online));
+        ConsoleUi.MenuItem("4", "Online lookup", OnlineLookupStatus());
         ConsoleUi.MenuItem("5", "Read file metadata", OnOff(_readMetadata));
         ConsoleUi.MenuItem("6", "File types", FileTypeName);
         ConsoleUi.MenuItem("7", "Download cloud files", OnOff(_hydrateCloudFiles));
+        ConsoleUi.MenuItem("8", "Comic Vine key", ComicVineKeyStatus);
 
         Console.WriteLine();
         ConsoleUi.MenuItem("S", "Scan and preview");
         ConsoleUi.MenuItem("U", "Undo the last run in this folder");
         ConsoleUi.MenuItem("Q", "Quit");
 
+        if (!HasComicVineKey)
+        {
+            Console.WriteLine();
+            ConsoleUi.Warn("   Comic Vine key not set - comics match far better with one, and it's free.");
+            ConsoleUi.Muted($"   Add one under [8], or get it at {ComicVineKeyUrl}");
+        }
+
         ConsoleUi.Prompt("Choose");
     }
 
     private static string OnOff(bool value) => value ? "Yes" : "No";
+
+    /// <summary>Flags an enabled lookup that has no Comic Vine key — its weakest spot for comics.</summary>
+    private string OnlineLookupStatus() =>
+        _online && !HasComicVineKey ? "Yes (no Comic Vine key)" : OnOff(_online);
+
+    /// <summary>True when a Comic Vine key is available, from this session or the environment.</summary>
+    private bool HasComicVineKey =>
+        !string.IsNullOrWhiteSpace(_comicVineKey) ||
+        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("HUMBLERENAMER_COMICVINE_KEY"));
+
+    private string ComicVineKeyStatus =>
+        !string.IsNullOrWhiteSpace(_comicVineKey) ? "Set for this session"
+        : !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("HUMBLERENAMER_COMICVINE_KEY")) ? "From environment"
+        : "Not set";
 
     private void ChooseFolder()
     {
@@ -350,6 +381,60 @@ public sealed class InteractiveSession
         _customExtensions = set.Count > 0 ? set : null;
     }
 
+    private void ChooseComicVineKey()
+    {
+        ConsoleUi.Section("Comic Vine Key");
+
+        ConsoleUi.Muted("  Comic Vine is by far the best source for comics, and a key is free.");
+        ConsoleUi.Muted("  It only comes into play when online lookup [4] is on.");
+        Console.WriteLine();
+        ConsoleUi.Write("  Current: ", ConsoleColor.Gray);
+        ConsoleUi.WriteLine(ComicVineKeyStatus, ConsoleColor.Cyan);
+        Console.WriteLine();
+
+        ConsoleUi.MenuItem("P", "Paste a key for this session");
+        ConsoleUi.MenuItem("G", "Get a free key (opens the signup page)");
+        ConsoleUi.MenuItem("C", "Clear the session key");
+        ConsoleUi.MenuItem("B", "Back");
+        ConsoleUi.Prompt("Choose");
+
+        switch (ConsoleUi.ReadChoice())
+        {
+            case 'P':
+                PasteComicVineKey();
+                break;
+            case 'G':
+                OpenInDefaultViewer(ComicVineKeyUrl);
+                break;
+            case 'C':
+                _comicVineKey = null;
+                Console.WriteLine();
+                ConsoleUi.Muted("  Session key cleared.");
+                ConsoleUi.Pause();
+                break;
+        }
+    }
+
+    private void PasteComicVineKey()
+    {
+        Console.WriteLine();
+        ConsoleUi.Muted($"  Paste the key shown at {ComicVineKeyUrl} when signed in.");
+        ConsoleUi.Muted("  It is held for this session only, never written to disk. Blank to cancel.");
+        Console.WriteLine();
+        ConsoleUi.Write("  Key: ", ConsoleColor.White);
+
+        var input = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return;
+        }
+
+        _comicVineKey = input.Trim();
+        Console.WriteLine();
+        ConsoleUi.WriteLine("  Key set for this session.", ConsoleColor.Green);
+        ConsoleUi.Pause();
+    }
+
     private RenameOptions BuildOptions()
     {
         var extensions = _customExtensions ??
@@ -383,7 +468,7 @@ public sealed class InteractiveSession
         {
             if (_online)
             {
-                lookup = LookupService.Create();
+                lookup = LookupService.Create(_comicVineKey);
                 ConsoleUi.Muted($"  Catalogues: {string.Join(", ", lookup.ActiveProviders)}");
             }
 
@@ -487,9 +572,11 @@ public sealed class InteractiveSession
     }
 
     /// <summary>
-    /// Walks every file, showing the different names the tool derived so the user can
-    /// pick one, type their own, look it up online, or keep the current name, then
-    /// returns a revised plan.
+    /// Walks the files with the arrow keys, showing the names the tool derived so the
+    /// user can pick one, type their own, look it up online, or keep the current name.
+    /// Up/Left step back to revise an earlier answer; Down/Right (or Enter) move on
+    /// keeping the highlighted option. Each file's candidates and choice persist across
+    /// navigation, so going back and forth never loses anything.
     /// </summary>
     private async Task<RenamePlan> HandReviewAsync(
         RenamePlan plan,
@@ -497,7 +584,17 @@ public sealed class InteractiveSession
         LookupService? scanLookup,
         CancellationToken cancellationToken)
     {
-        var chosen = new Dictionary<int, string>();
+        var count = plan.Actions.Count;
+        if (count == 0)
+        {
+            return plan;
+        }
+
+        // Per-file state kept for the whole review so moving back and forth never loses
+        // a fetched candidate or a chosen answer.
+        var lists = new List<NameCandidate>[count];
+        var selected = new int[count];
+        var visited = new bool[count];
 
         // Reuse the scan's catalogue connection when online was on; otherwise open one
         // lazily the first time the user asks, and dispose only what we opened here.
@@ -506,84 +603,105 @@ public sealed class InteractiveSession
 
         try
         {
-            for (var i = 0; i < plan.Actions.Count; i++)
+            var i = 0;
+            var finished = false;
+
+            while (!finished && i < count)
             {
                 var action = plan.Actions[i];
-                var candidates = new List<NameCandidate>(DisplayCandidates(action));
 
-                // The highlighted default is whichever candidate the scan settled on.
-                var defaultIndex = 0;
-                for (var c = 0; c < candidates.Count; c++)
+                if (!visited[i])
                 {
-                    if (string.Equals(candidates[c].Name, action.ProposedName, StringComparison.Ordinal))
-                    {
-                        defaultIndex = c;
-                        break;
-                    }
+                    lists[i] = [.. DisplayCandidates(action)];
+                    selected[i] = IndexOfName(lists[i], action.ProposedName);
+                    visited[i] = true;
                 }
 
-                var decided = false;
-                while (!decided)
+                var candidates = lists[i];
+
+                ConsoleUi.TryClear();
+                SplashScreen.ShowCompact(_version);
+                DrawReviewFile(i + 1, count, action, candidates, selected[i]);
+
+                var pressed = ConsoleUi.ReadKeyInfo();
+                var ch = char.ToUpperInvariant(pressed.KeyChar);
+
+                var toPrevious = pressed.Key is ConsoleKey.UpArrow or ConsoleKey.LeftArrow || ch is ',' or '<';
+                var toNext = pressed.Key is ConsoleKey.DownArrow or ConsoleKey.RightArrow or ConsoleKey.Enter
+                             || ch is '.' or '>';
+
+                if (toPrevious)
                 {
-                    ConsoleUi.TryClear();
-                    SplashScreen.ShowCompact(_version);
-                    DrawReviewFile(i + 1, plan.Actions.Count, action, candidates, defaultIndex);
+                    if (i > 0)
+                    {
+                        i--;
+                    }
+                }
+                else if (toNext)
+                {
+                    // Move on keeping the highlighted option, already stored in selected[i].
+                    i++;
+                }
+                else if (char.IsDigit(ch))
+                {
+                    var pick = ch - '1';
+                    if (pick >= 0 && pick < candidates.Count)
+                    {
+                        selected[i] = pick;
+                        i++;
+                    }
+                }
+                else if (ch == 'E')
+                {
+                    var custom = PromptForCustomName(action.OriginalName);
+                    if (custom is not null)
+                    {
+                        candidates.Add(new NameCandidate
+                        {
+                            Label = "your name",
+                            Name = custom + Path.GetExtension(action.OriginalName),
+                        });
+                        selected[i] = candidates.Count - 1;
+                        i++;
+                    }
+                }
+                else if (ch == 'S')
+                {
+                    selected[i] = IndexOfName(candidates, action.OriginalName);
+                    i++;
+                }
+                else if (ch == 'O')
+                {
+                    // Look at the actual file; stay on it afterwards.
+                    OpenInDefaultViewer(action.OriginalPath);
+                }
+                else if (ch == 'L')
+                {
+                    if (lookup is null)
+                    {
+                        lookup = LookupService.Create(_comicVineKey);
+                        createdLookup = true;
+                    }
 
-                    var key = ConsoleUi.ReadChoice();
+                    var added = await AddOnlineCandidateAsync(
+                        planner, lookup, action, candidates, cancellationToken);
+                    if (added >= 0)
+                    {
+                        selected[i] = added; // highlight the freshly fetched name
+                    }
+                }
+                else if (ch == 'Q')
+                {
+                    finished = true;
+                }
+            }
 
-                    if (key is '\r' or '\n' or '\0')
-                    {
-                        chosen[i] = BaseNameOf(candidates[defaultIndex].Name);
-                        decided = true;
-                    }
-                    else if (key == 'E')
-                    {
-                        var custom = PromptForCustomName(action.OriginalName);
-                        if (custom is not null)
-                        {
-                            chosen[i] = custom;
-                            decided = true;
-                        }
-                    }
-                    else if (key == 'S')
-                    {
-                        chosen[i] = Path.GetFileNameWithoutExtension(action.OriginalName);
-                        decided = true;
-                    }
-                    else if (key == 'O')
-                    {
-                        // Look at the actual file before deciding; stay on it afterwards.
-                        OpenInDefaultViewer(action.OriginalPath);
-                    }
-                    else if (key == 'L')
-                    {
-                        if (lookup is null)
-                        {
-                            lookup = LookupService.Create();
-                            createdLookup = true;
-                        }
-
-                        var added = await AddOnlineCandidateAsync(
-                            planner, lookup, action, candidates, cancellationToken);
-                        if (added >= 0)
-                        {
-                            defaultIndex = added; // highlight the freshly fetched name
-                        }
-                    }
-                    else if (key == 'Q')
-                    {
-                        // Finish now: files not yet reached keep their scan proposal.
-                        return RenamePlanner.RebuildWithChosenNames(plan, chosen);
-                    }
-                    else if (char.IsDigit(key))
-                    {
-                        var pick = key - '1';
-                        if (pick >= 0 && pick < candidates.Count)
-                        {
-                            chosen[i] = BaseNameOf(candidates[pick].Name);
-                            decided = true;
-                        }
-                    }
+            var chosen = new Dictionary<int, string>();
+            for (var r = 0; r < count; r++)
+            {
+                if (visited[r])
+                {
+                    chosen[r] = BaseNameOf(lists[r][selected[r]].Name);
                 }
             }
 
@@ -596,6 +714,20 @@ public sealed class InteractiveSession
                 lookup!.Dispose();
             }
         }
+    }
+
+    /// <summary>Index of the candidate whose name matches, or 0 (the top choice) if none do.</summary>
+    private static int IndexOfName(List<NameCandidate> candidates, string name)
+    {
+        for (var c = 0; c < candidates.Count; c++)
+        {
+            if (string.Equals(candidates[c].Name, name, StringComparison.Ordinal))
+            {
+                return c;
+            }
+        }
+
+        return 0;
     }
 
     /// <summary>
@@ -670,8 +802,9 @@ public sealed class InteractiveSession
         ConsoleUi.MenuItem("L", "Look it up in the online catalogues");
         ConsoleUi.MenuItem("E", "Type my own name");
         ConsoleUi.MenuItem("S", "Skip - keep the current name");
-        ConsoleUi.MenuItem("Q", "Finish review, keep the rest as previewed");
-        ConsoleUi.Muted("  A number picks a name; Enter takes the highlighted one.");
+        ConsoleUi.MenuItem("Q", "Finish review now");
+        ConsoleUi.Muted("  Up/Left go back to revise; Down/Right (or Enter) move on with the");
+        ConsoleUi.Muted("  highlighted name. A number picks that option and moves on.");
         ConsoleUi.Prompt("Choose");
     }
 

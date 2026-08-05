@@ -38,7 +38,7 @@ Double-click `HumbleRenamer.exe`, or run it with no arguments. Everything is cho
 on-screen menus — there is nothing to memorise.
 
 ```
-  ▓▒░ MAIN MENU ░▒▓───────────────────────────────────────────────
+  ▓▒░ Main Menu ░▒▓───────────────────────────────────────────────
 
    [1]  Folder .................. D:\Comics\Humble Bundle
    [2]  Name format ............. Full descriptive title
@@ -47,13 +47,21 @@ on-screen menus — there is nothing to memorise.
    [5]  Read file metadata ...... Yes
    [6]  File types .............. Comics and ebooks
    [7]  Download cloud files .... No
+   [8]  Comic Vine key .......... Not set
 
    [S]  Scan and preview
    [U]  Undo the last run in this folder
    [Q]  Quit
 
-  ▓▒░ choose ░▒▓ >
+   Comic Vine key not set - comics match far better with one, and it's free.
+   Add one under [8], or get it at https://comicvine.gamespot.com/api/
+
+  ▓▒░ Choose ░▒▓ >
 ```
+
+Entry `[8]` is where you paste a Comic Vine key for the session, or press `G` to open
+the free signup page in your browser. The nudge and `[8]`'s "Not set" both vanish once a
+key is present — either pasted here, or found in `HUMBLERENAMER_COMICVINE_KEY`.
 
 Drag a folder onto the exe to pre-fill entry `[1]`.
 
@@ -80,10 +88,15 @@ and you pick one, type your own, or keep the current name, then it moves to the 
    [L]  Look it up in the online catalogues
    [E]  Type my own name
    [S]  Skip - keep the current name
-   [Q]  Finish review, keep the rest as previewed
+   [Q]  Finish review now
 
   ▓▒░ Choose ░▒▓ >
 ```
+
+Move with the arrow keys: Down or Right (or Enter) goes to the next file keeping the
+highlighted name; Up or Left steps back to an earlier file to change your answer. A
+number picks that option and moves on. Every file keeps its choice as you go back and
+forth, so nothing is lost, and `Q` finishes from wherever you are.
 
 Not sure what a file actually is? `O` opens it in whatever viewer the OS uses for that
 type — the PDF reader, the CBZ viewer — and leaves you on the same file to decide.
@@ -207,6 +220,11 @@ address and Comic Vine needs a free key. Either can be supplied by flag or envir
 $env:HUMBLERENAMER_COMICVINE_KEY    = 'your-key'   # much better for comics specifically
 $env:HUMBLERENAMER_GOOGLE_BOOKS_KEY = 'your-key'
 ```
+
+A Comic Vine key is free — create an account at <https://comicvine.gamespot.com/api/> and
+it is shown on that page. In the menus, entry `[8]` opens the signup page for you and lets
+you paste the key for the session, so you don't have to set the environment variable at
+all. The main menu nags gently until a key is found either way.
 
 Responses are cached in `%LOCALAPPDATA%\HumbleRenamer\lookup-cache.json`, including
 misses, so a second run over the same folder does not re-ask.
