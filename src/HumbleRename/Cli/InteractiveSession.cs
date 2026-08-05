@@ -459,9 +459,9 @@ public sealed class InteractiveSession
         ConsoleUi.WriteLine(ComicVineKeyStatus, ConsoleColor.Cyan);
         Console.WriteLine();
 
-        ConsoleUi.MenuItem("P", "Paste a key for this session");
+        ConsoleUi.MenuItem("P", "Paste and save a key");
         ConsoleUi.MenuItem("G", "Get a free key (opens the signup page)");
-        ConsoleUi.MenuItem("C", "Clear the session key");
+        ConsoleUi.MenuItem("C", "Clear the saved key");
         ConsoleUi.MenuItem("B", "Back");
         ConsoleUi.Prompt("Choose");
 
