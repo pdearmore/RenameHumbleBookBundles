@@ -200,12 +200,18 @@ public static class ConsoleUi
         return char.ToUpperInvariant(key.KeyChar);
     }
 
-    /// <summary>Draws a warez-style section rule: ▓▒░ TITLE ░▒▓────────</summary>
+    /// <summary>
+    /// Draws a warez-style section rule: ▓▒░ Title ░▒▓────────
+    /// </summary>
+    /// <remarks>
+    /// The title is printed as given. It used to be upper-cased here, which shouted
+    /// folder paths and timestamps back at the user as "SCANNING C:\USERS\...".
+    /// </remarks>
     public static void Section(string title)
     {
         Console.WriteLine();
         Write("  ▓▒░ ", ConsoleColor.Magenta);
-        Write(title.ToUpperInvariant(), ConsoleColor.White);
+        Write(title, ConsoleColor.White);
         Write(" ░▒▓", ConsoleColor.Magenta);
 
         var used = 6 + title.Length + 4;

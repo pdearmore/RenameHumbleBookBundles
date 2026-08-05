@@ -128,7 +128,7 @@ public sealed class InteractiveSession
 
     private void DrawMainMenu()
     {
-        ConsoleUi.Section("main menu");
+        ConsoleUi.Section("Main Menu");
 
         ConsoleUi.MenuItem("1", "Folder", _folder ?? "(not set)");
         ConsoleUi.MenuItem("2", "Name format", TemplateName);
@@ -143,14 +143,14 @@ public sealed class InteractiveSession
         ConsoleUi.MenuItem("U", "Undo the last run in this folder");
         ConsoleUi.MenuItem("Q", "Quit");
 
-        ConsoleUi.Prompt("choose");
+        ConsoleUi.Prompt("Choose");
     }
 
     private static string OnOff(bool value) => value ? "Yes" : "No";
 
     private void ChooseFolder()
     {
-        ConsoleUi.Section("which folder");
+        ConsoleUi.Section("Which Folder");
 
         if (_folder is not null)
         {
@@ -203,7 +203,7 @@ public sealed class InteractiveSession
 
     private void ChooseTemplate()
     {
-        ConsoleUi.Section("name format");
+        ConsoleUi.Section("Name Format");
 
         for (var i = 0; i < TemplatePresets.Length; i++)
         {
@@ -220,7 +220,7 @@ public sealed class InteractiveSession
         Console.WriteLine();
         ConsoleUi.MenuItem("C", "Custom template...");
         ConsoleUi.MenuItem("B", "Back");
-        ConsoleUi.Prompt("choose");
+        ConsoleUi.Prompt("Choose");
 
         var choice = ConsoleUi.ReadChoice();
 
@@ -243,7 +243,7 @@ public sealed class InteractiveSession
 
     private void EnterCustomTemplate()
     {
-        ConsoleUi.Section("custom template");
+        ConsoleUi.Section("Custom Template");
 
         ConsoleUi.Muted("  Tokens:  Series  Title  Subtitle  Volume  Issue  Book  Year");
         ConsoleUi.Muted("           Author  Publisher  Editions");
@@ -284,7 +284,7 @@ public sealed class InteractiveSession
 
     private void ChooseFileTypes()
     {
-        ConsoleUi.Section("file types");
+        ConsoleUi.Section("File Types");
 
         for (var i = 0; i < FileTypePresets.Length; i++)
         {
@@ -305,7 +305,7 @@ public sealed class InteractiveSession
         Console.WriteLine();
         ConsoleUi.MenuItem("C", "Custom list...");
         ConsoleUi.MenuItem("B", "Back");
-        ConsoleUi.Prompt("choose");
+        ConsoleUi.Prompt("Choose");
 
         var choice = ConsoleUi.ReadChoice();
 
@@ -328,7 +328,7 @@ public sealed class InteractiveSession
 
     private void EnterCustomExtensions()
     {
-        ConsoleUi.Section("custom file types");
+        ConsoleUi.Section("Custom File Types");
         ConsoleUi.Muted("  Comma separated, for example:  cbz, cbr, pdf");
         Console.WriteLine();
         ConsoleUi.Write("  Extensions (blank to cancel): ", ConsoleColor.White);
@@ -368,13 +368,13 @@ public sealed class InteractiveSession
     {
         if (_folder is null)
         {
-            ConsoleUi.Section("no folder yet");
+            ConsoleUi.Section("No Folder Yet");
             ConsoleUi.Warn("  Pick a folder first with [1].");
             ConsoleUi.Pause();
             return;
         }
 
-        ConsoleUi.Section($"scanning {_folder}");
+        ConsoleUi.Section($"Scanning {_folder}");
 
         LookupService? lookup = null;
         try
@@ -427,10 +427,10 @@ public sealed class InteractiveSession
             return;
         }
 
-        ConsoleUi.Section("apply?");
+        ConsoleUi.Section("Apply?");
         ConsoleUi.MenuItem("A", $"Apply these {plan.ChangeCount} rename(s)");
         ConsoleUi.MenuItem("B", "Back to the menu, change nothing");
-        ConsoleUi.Prompt("choose");
+        ConsoleUi.Prompt("Choose");
 
         if (ConsoleUi.ReadChoice() != 'A')
         {
@@ -457,10 +457,10 @@ public sealed class InteractiveSession
         }
 
         // The revert offer belongs here, while the list is still on screen.
-        ConsoleUi.Section("happy with that?");
+        ConsoleUi.Section("Happy With That?");
         ConsoleUi.MenuItem("K", "Keep the new names");
         ConsoleUi.MenuItem("R", "Revert - put every file back");
-        ConsoleUi.Prompt("choose");
+        ConsoleUi.Prompt("Choose");
 
         if (ConsoleUi.ReadChoice() == 'R')
         {
@@ -488,7 +488,7 @@ public sealed class InteractiveSession
     {
         if (_folder is null)
         {
-            ConsoleUi.Section("no folder yet");
+            ConsoleUi.Section("No Folder Yet");
             ConsoleUi.Warn("  Pick a folder first with [1].");
             ConsoleUi.Pause();
             return;
@@ -497,13 +497,13 @@ public sealed class InteractiveSession
         var log = UndoLog.Load(_folder);
         if (log is null)
         {
-            ConsoleUi.Section("nothing to undo");
+            ConsoleUi.Section("Nothing to Undo");
             ConsoleUi.Warn($"  No previous run recorded in {_folder}.");
             ConsoleUi.Pause();
             return;
         }
 
-        ConsoleUi.Section($"undo {log.Entries.Count} rename(s) from {log.TimestampUtc.ToLocalTime():g}");
+        ConsoleUi.Section($"Undo {log.Entries.Count} rename(s) from {log.TimestampUtc.ToLocalTime():g}");
 
         foreach (var entry in log.Entries)
         {
@@ -513,10 +513,10 @@ public sealed class InteractiveSession
             ConsoleUi.WriteLine(entry.From, ConsoleColor.Green);
         }
 
-        ConsoleUi.Section("confirm");
+        ConsoleUi.Section("Confirm");
         ConsoleUi.MenuItem("R", $"Revert all {log.Entries.Count}");
         ConsoleUi.MenuItem("B", "Back, change nothing");
-        ConsoleUi.Prompt("choose");
+        ConsoleUi.Prompt("Choose");
 
         if (ConsoleUi.ReadChoice() != 'R')
         {

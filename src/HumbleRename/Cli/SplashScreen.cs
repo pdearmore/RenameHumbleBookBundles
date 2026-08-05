@@ -19,23 +19,28 @@ public static class SplashScreen
 
     private const int Width = 78;
 
+    /// <summary>
+    /// HUMBLE is the shorter word, so its rows carry leading spaces that centre it
+    /// over RENAMER. Trailing spaces are avoided throughout because editors that
+    /// honour .editorconfig would strip them and knock the art out of alignment.
+    /// </summary>
     private static readonly string[] Logo =
     [
-        @"██╗  ██╗██╗   ██╗███╗   ███╗██████╗ ██╗     ███████╗",
-        @"██║  ██║██║   ██║████╗ ████║██╔══██╗██║     ██╔════╝",
-        @"███████║██║   ██║██╔████╔██║██████╔╝██║     █████╗",
-        @"██╔══██║██║   ██║██║╚██╔╝██║██╔══██╗██║     ██╔══╝",
-        @"██║  ██║╚██████╔╝██║ ╚═╝ ██║██████╔╝███████╗███████╗",
-        @"╚═╝  ╚═╝ ╚═════╝ ╚═╝     ╚═╝╚═════╝ ╚══════╝╚══════╝",
-        @"██████╗ ███████╗███╗   ██╗ █████╗ ███╗   ███╗███████╗",
-        @"██╔══██╗██╔════╝████╗  ██║██╔══██╗████╗ ████║██╔════╝",
-        @"██████╔╝█████╗  ██╔██╗ ██║███████║██╔████╔██║█████╗",
-        @"██╔══██╗██╔══╝  ██║╚██╗██║██╔══██║██║╚██╔╝██║██╔══╝",
-        @"██║  ██║███████╗██║ ╚████║██║  ██║██║ ╚═╝ ██║███████╗",
-        @"╚═╝  ╚═╝╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝",
+        @"    ██╗  ██╗██╗   ██╗███╗   ███╗██████╗ ██╗     ███████╗",
+        @"    ██║  ██║██║   ██║████╗ ████║██╔══██╗██║     ██╔════╝",
+        @"    ███████║██║   ██║██╔████╔██║██████╔╝██║     █████╗",
+        @"    ██╔══██║██║   ██║██║╚██╔╝██║██╔══██╗██║     ██╔══╝",
+        @"    ██║  ██║╚██████╔╝██║ ╚═╝ ██║██████╔╝███████╗███████╗",
+        @"    ╚═╝  ╚═╝ ╚═════╝ ╚═╝     ╚═╝╚═════╝ ╚══════╝╚══════╝",
+        @"██████╗ ███████╗███╗   ██╗ █████╗ ███╗   ███╗███████╗██████╗",
+        @"██╔══██╗██╔════╝████╗  ██║██╔══██╗████╗ ████║██╔════╝██╔══██╗",
+        @"██████╔╝█████╗  ██╔██╗ ██║███████║██╔████╔██║█████╗  ██████╔╝",
+        @"██╔══██╗██╔══╝  ██║╚██╗██║██╔══██║██║╚██╔╝██║██╔══╝  ██╔══██╗",
+        @"██║  ██║███████╗██║ ╚████║██║  ██║██║ ╚═╝ ██║███████╗██║  ██║",
+        @"╚═╝  ╚═╝╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝",
     ];
 
-    /// <summary>Face colour per logo row: magenta for HUMBLE, cyan for RENAME.</summary>
+    /// <summary>Face colour per logo row: magenta for HUMBLE, cyan for RENAMER.</summary>
     private static readonly ConsoleColor[] RowColors =
     [
         ConsoleColor.DarkMagenta, ConsoleColor.Magenta, ConsoleColor.Magenta,
@@ -46,7 +51,7 @@ public static class SplashScreen
 
     public static void Show(string version)
     {
-        TryClear();
+        ConsoleUi.TryClear();
         Console.WriteLine();
 
         WriteBar();
@@ -54,7 +59,7 @@ public static class SplashScreen
 
         for (var row = 0; row < Logo.Length; row++)
         {
-            Console.Write("     ");
+            Console.Write("   ");
             WriteShadowed(Logo[row], RowColors[row]);
             Console.WriteLine();
         }
@@ -62,9 +67,8 @@ public static class SplashScreen
         Console.WriteLine();
         WriteBar();
 
-        // Inverted caps: the house style of a thousand .nfo files.
         Console.Write("   ");
-        ConsoleUi.Write("· pROPER nAMES fOR hUMBLE bUNDLE cOMICS & bOOKS ·", ConsoleColor.Gray);
+        ConsoleUi.Write("· Proper names for Humble Bundle comics & books ·", ConsoleColor.Gray);
         ConsoleUi.Write("   [ ", ConsoleColor.DarkGray);
         ConsoleUi.Write($"v{version}", ConsoleColor.White);
         ConsoleUi.WriteLine(" ]", ConsoleColor.DarkGray);
@@ -85,7 +89,7 @@ public static class SplashScreen
         ConsoleUi.Write("  ▄▄▄ ", ConsoleColor.Magenta);
         ConsoleUi.Write("H U M B L E", ConsoleColor.White);
         ConsoleUi.Write("  ", ConsoleColor.Gray);
-        ConsoleUi.Write("R E N A M E", ConsoleColor.Cyan);
+        ConsoleUi.Write("R E N A M E R", ConsoleColor.Cyan);
         ConsoleUi.Write(" ▄▄▄", ConsoleColor.Magenta);
         ConsoleUi.Write("   [ ", ConsoleColor.DarkGray);
         ConsoleUi.Write($"v{version}", ConsoleColor.White);
@@ -128,21 +132,6 @@ public static class SplashScreen
             {
                 Console.Write(glyph);
             }
-        }
-    }
-
-    private static void TryClear()
-    {
-        try
-        {
-            if (!Console.IsOutputRedirected)
-            {
-                Console.Clear();
-            }
-        }
-        catch (IOException)
-        {
-            // Clearing is cosmetic; some hosts do not allow it.
         }
     }
 }
