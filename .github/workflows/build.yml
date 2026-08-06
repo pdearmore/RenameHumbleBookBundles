@@ -1,0 +1,80 @@
+name: Build Humble Renamer
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            rid: win-x64
+            executable: HumbleRenamer.exe
+          - name: macOS Apple Silicon
+            os: macos-latest
+            rid: osx-arm64
+            executable: HumbleRenamer
+          - name: Linux x64
+            os: ubuntu-latest
+            rid: linux-x64
+            executable: HumbleRenamer
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Test
+        run: dotnet test HumbleRename.slnx -c Release --nologo
+      - name: Publish self-contained app
+        shell: pwsh
+        run: >-
+          dotnet publish src/HumbleRename/HumbleRename.csproj
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:EnableCompressionInSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=none
+          -o dist/${{ matrix.rid }}
+          --nologo
+      - name: Package download
+        shell: pwsh
+        run: Compress-Archive -Path dist/${{ matrix.rid }}/${{ matrix.executable }} -DestinationPath HumbleRenamer-${{ matrix.rid }}.zip
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HumbleRenamer-${{ matrix.rid }}
+          path: HumbleRenamer-${{ matrix.rid }}.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Collect platform downloads
+        uses: actions/download-artifact@v4
+        with:
+          pattern: HumbleRenamer-*
+          path: release-assets
+          merge-multiple: true
+      - name: Publish release downloads
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release-assets/*.zip
