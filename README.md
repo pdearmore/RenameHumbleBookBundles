@@ -38,21 +38,21 @@ Double-click `HumbleRenamer.exe`, or run it with no arguments. Everything is cho
 on-screen menus — there is nothing to memorise.
 
 ```
-  ▓▒░ MAIN MENU ░▒▓───────────────────────────────────────────────
-
-   [1]  Folder .................. D:\Comics\Humble Bundle
-   [2]  Name format ............. Full descriptive title
-   [3]  Include subfolders ...... No
-   [4]  Online lookup ........... No
-   [5]  Read file metadata ...... Yes
-   [6]  File types .............. Comics and ebooks
-   [7]  Download cloud files .... No
-
-   [S]  Scan and preview
-   [U]  Undo the last run in this folder
-   [Q]  Quit
-
-  ▓▒░ choose ░▒▓ >
+  ╔══[ MAIN MENU ]═════════════════════════════════════════════════════════════╗
+  ║ [1]  Folder ·················· D:\Comics\Humble Bundle                     ║
+  ║ [2]  Name format ············· Full descriptive title                      ║
+  ║ [3]  Include subfolders ······ No                                          ║
+  ║ [4]  Online lookup ··········· No                                          ║
+  ║ [5]  Read file metadata ······ Yes                                         ║
+  ║ [6]  File types ·············· Comics and ebooks                           ║
+  ║ [7]  Download cloud files ···· No                                          ║
+  ╟────────────────────────────────────────────────────────────────────────────╢
+  ║ [S]  Scan and preview                                                      ║
+  ║ [U]  Undo the last run in this folder                                      ║
+  ║ [F]  Send feedback or report a problem                                     ║
+  ║ [Q]  Quit                                                                  ║
+  ╚══[ CHOOSE ]════════════════════════════════════════════════════════════════╝
+  ░▒▓█▓▒ ▶
 ```
 
 Drag a folder onto the exe to pre-fill entry `[1]`.

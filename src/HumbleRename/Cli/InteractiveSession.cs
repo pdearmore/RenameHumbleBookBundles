@@ -91,42 +91,59 @@ public sealed class InteractiveSession
             firstPass = false;
             DrawMainMenu();
 
-            switch (ConsoleUi.ReadChoice())
+            try
             {
-                case '1':
-                    ChooseFolder();
-                    break;
-                case '2':
-                    ChooseTemplate();
-                    break;
-                case '3':
-                    _recurse = !_recurse;
-                    break;
-                case '4':
-                    _online = !_online;
-                    break;
-                case '5':
-                    _readMetadata = !_readMetadata;
-                    break;
-                case '6':
-                    ChooseFileTypes();
-                    break;
-                case '7':
-                    _hydrateCloudFiles = !_hydrateCloudFiles;
-                    break;
-                case 'S':
-                    await ScanAsync(cancellationToken);
-                    break;
-                case 'U':
-                    UndoLastRun();
-                    break;
-                case 'F':
-                    OpenFeedbackForm();
-                    break;
-                case 'Q':
-                    Console.WriteLine();
-                    ConsoleUi.Muted("  Bye.");
-                    return 0;
+                switch (ConsoleUi.ReadChoice())
+                {
+                    case '1':
+                        ChooseFolder();
+                        break;
+                    case '2':
+                        ChooseTemplate();
+                        break;
+                    case '3':
+                        _recurse = !_recurse;
+                        break;
+                    case '4':
+                        _online = !_online;
+                        break;
+                    case '5':
+                        _readMetadata = !_readMetadata;
+                        break;
+                    case '6':
+                        ChooseFileTypes();
+                        break;
+                    case '7':
+                        _hydrateCloudFiles = !_hydrateCloudFiles;
+                        break;
+                    case 'S':
+                        await ScanAsync(cancellationToken);
+                        break;
+                    case 'U':
+                        UndoLastRun();
+                        break;
+                    case 'F':
+                        OpenFeedbackForm();
+                        break;
+                    case 'Q':
+                        Console.WriteLine();
+                        ConsoleUi.Muted("  Bye.");
+                        return 0;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw; // Ctrl+C should still unwind and exit.
+            }
+            catch (Exception ex)
+            {
+                // A single action failing must not take the whole window down with it:
+                // show what happened and return to the menu, where nothing has been lost.
+                ConsoleUi.ClearProgress();
+                ConsoleUi.Section("something went wrong");
+                ConsoleUi.Error($"  {ex.Message}");
+                ConsoleUi.Muted("  Back to the menu - your settings are still set.");
+                ConsoleUi.Pause();
             }
         }
     }
@@ -232,14 +249,11 @@ public sealed class InteractiveSession
             var (name, _, example) = TemplatePresets[i];
             var selected = _customTemplate is null && i == _templateIndex;
 
-            ConsoleUi.Write(selected ? "   > [" : "     [", ConsoleColor.DarkGray);
-            ConsoleUi.Write((i + 1).ToString(), ConsoleColor.Green);
-            ConsoleUi.Write("]  ", ConsoleColor.DarkGray);
-            ConsoleUi.WriteLine(name, selected ? ConsoleColor.White : ConsoleColor.Gray);
-            ConsoleUi.Muted($"          {example}");
+            ConsoleUi.MenuChoice((i + 1).ToString(), name, selected);
+            ConsoleUi.MenuNote(example);
         }
 
-        Console.WriteLine();
+        ConsoleUi.MenuDivider();
         ConsoleUi.MenuItem("C", "Custom template...");
         ConsoleUi.MenuItem("B", "Back");
         ConsoleUi.Prompt("choose");
@@ -313,18 +327,15 @@ public sealed class InteractiveSession
             var (name, extensions) = FileTypePresets[i];
             var selected = _customExtensions is null && i == _fileTypeIndex;
 
-            ConsoleUi.Write(selected ? "   > [" : "     [", ConsoleColor.DarkGray);
-            ConsoleUi.Write((i + 1).ToString(), ConsoleColor.Green);
-            ConsoleUi.Write("]  ", ConsoleColor.DarkGray);
-            ConsoleUi.WriteLine(name, selected ? ConsoleColor.White : ConsoleColor.Gray);
+            ConsoleUi.MenuChoice((i + 1).ToString(), name, selected);
 
             if (extensions.Length > 0)
             {
-                ConsoleUi.Muted("          " + string.Join("  ", extensions));
+                ConsoleUi.MenuNote(string.Join("  ", extensions));
             }
         }
 
-        Console.WriteLine();
+        ConsoleUi.MenuDivider();
         ConsoleUi.MenuItem("C", "Custom list...");
         ConsoleUi.MenuItem("B", "Back");
         ConsoleUi.Prompt("choose");
@@ -396,7 +407,8 @@ public sealed class InteractiveSession
             return;
         }
 
-        ConsoleUi.Section($"scanning {_folder}");
+        ConsoleUi.Section("scanning");
+        ConsoleUi.Muted($"  {_folder}");
 
         LookupService? lookup = null;
         try

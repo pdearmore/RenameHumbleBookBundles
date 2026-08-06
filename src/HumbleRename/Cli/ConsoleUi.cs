@@ -12,9 +12,6 @@ namespace HumbleRename.Cli;
 /// </remarks>
 public static class ConsoleUi
 {
-    // Includes the two-space left gutter. Every top, side, divider, and bottom edge uses this
-    // one width so paired corners always land in the same column.
-    private const int FrameWidth = 80;
     // Dearmore.net's green-phosphor terminal palette, mapped to the portable
     // 16-colour console set. Consoles cannot reproduce CSS scanlines or glow,
     // but the hierarchy stays intact in Windows Terminal and conhost.
@@ -79,8 +76,9 @@ public static class ConsoleUi
     public static void Heading(string text)
     {
         Console.WriteLine();
-        WriteLine(text, Structural);
-        WriteLine(new string('-', Math.Min(text.Length, SafeWidth())), ConsoleColor.DarkGray);
+        Write("  ▓▒░ ", ConsoleColor.DarkGreen);
+        Write(text, Structural);
+        WriteLine(" ░▒▓", ConsoleColor.DarkGreen);
     }
 
     public static void Error(string text) => WriteLine(text, ConsoleColor.Red);
@@ -221,11 +219,22 @@ public static class ConsoleUi
         return char.ToUpperInvariant(key.KeyChar);
     }
 
-    /// <summary>Draws a compact green-phosphor text-mode section rule.</summary>
+    // ── Frame geometry ──────────────────────────────────────────────────────
+    // Every framed line is exactly 80 columns wide: a two-space gutter, a
+    // vertical bar, 76 inner columns, and a closing bar. Rules, rows, and
+    // dividers all derive their padding from this one number, so paired corners
+    // and side walls always land in the same column and the box reads as closed.
+    internal const int FrameInner = 76;
+
+    // The widest a content row may be after its leading space: inner columns, less
+    // the leading and trailing margins and at least one space before the wall.
+    private const int MaxContent = FrameInner - 3;
+
+    /// <summary>Draws the top edge of a framed section: a titled double-line rule.</summary>
     public static void Section(string title)
     {
         Console.WriteLine();
-        WriteFrameEdge('╔', '╗', title);
+        FrameRule('╔', '╗', '═', title.ToUpperInvariant(), Structural);
     }
 
     /// <summary>
@@ -233,39 +242,67 @@ public static class ConsoleUi
     /// </summary>
     public static void MenuItem(string key, string label, string? value = null, int labelWidth = 24)
     {
-        Write("  ║ ", Panel);
+        FrameRowStart();
         Write("[", Panel);
         Write(key, Action);
         Write("]  ", Panel);
+        var used = 4 + key.Length; // "[" + key + "]  "
 
         if (value is null)
         {
-            Write(label, Body);
-            WriteFramePadding(5 + key.Length + label.Length);
+            var text = FitHead(label, MaxContent - used);
+            Write(text, Body);
+            FrameRowEnd(used + text.Length);
             return;
         }
 
         Write(label + " ", Body);
         var dots = Math.Max(1, labelWidth - label.Length);
         Write(new string('·', dots) + " ", ConsoleColor.DarkGreen);
-        Write(value, Structural);
-        WriteFramePadding(5 + key.Length + label.Length + 1 + dots + 1 + value.Length);
+
+        // A long value — most often a folder path — is truncated from the left so
+        // the informative tail survives and the right wall stays put.
+        var prefix = used + label.Length + 1 + dots + 1;
+        var shown = FitTail(value, Math.Max(1, MaxContent - prefix));
+        Write(shown, Structural);
+        FrameRowEnd(prefix + shown.Length);
     }
 
-    /// <summary>Separates primary actions from configuration without breaking the frame.</summary>
-    public static void MenuDivider()
+    /// <summary>
+    /// A framed selectable list row: a selection caret, a bracketed key, and a label.
+    /// Used for the preset pickers so the whole list stays inside the frame.
+    /// </summary>
+    public static void MenuChoice(string key, string label, bool selected)
     {
-        Write("  ╟", Panel);
-        WriteDitherRule(FrameWidth - 4);
-        WriteLine("╢", Panel);
+        FrameRowStart();
+        Write(selected ? "> [" : "  [", selected ? Structural : Panel);
+        Write(key, Action);
+        Write("]  ", Panel);
+        Write(label, selected ? ConsoleColor.White : Body);
+        FrameRowEnd(6 + key.Length + label.Length); // "> [" + key + "]  " + label
     }
 
-    /// <summary>Draws the prompt the user types their menu selection at.</summary>
+    /// <summary>A framed, dimmed sub-line indented to sit under a <see cref="MenuChoice"/> label.</summary>
+    public static void MenuNote(string text)
+    {
+        const int indent = 7; // lands under the label column of MenuChoice
+        FrameRowStart();
+        Write(new string(' ', indent), Panel);
+        Write(text, ConsoleColor.DarkGray);
+        FrameRowEnd(indent + text.Length);
+    }
+
+    /// <summary>Separates primary actions from configuration with a light inner shelf.</summary>
+    public static void MenuDivider() => FrameRule('╟', '╢', '─', null, Panel);
+
+    /// <summary>Draws the bottom edge of a framed section plus the input caret.</summary>
     public static void Prompt(string label)
     {
-        WriteFrameEdge('╚', '╝', label);
-        Write("  :: ", Panel);
-        Write("> ", Action);
+        FrameRule('╚', '╝', '═', label.ToUpperInvariant(), Structural);
+        Write("  ", Panel);
+        Write("░▒▓", ConsoleColor.DarkGreen);
+        Write("█▓▒", ConsoleColor.Green);
+        Write(" ▶ ", Action);
     }
 
     public static void TryClear()
@@ -359,39 +396,81 @@ public static class ConsoleUi
         }
     }
 
-    private static void WriteFrameEdge(char left, char right, string label)
+    /// <summary>Opens a framed content row: gutter, left wall, one leading space.</summary>
+    private static void FrameRowStart() => Write("  ║ ", Panel);
+
+    /// <summary>
+    /// Closes a framed content row, padding so the right wall lands in column 80.
+    /// <paramref name="contentColumns"/> is everything written after the leading space.
+    /// </summary>
+    private static void FrameRowEnd(int contentColumns)
     {
-        var upper = label.ToUpperInvariant();
-        Write($"  {left}═[ ", Panel);
-        Write(upper, Structural);
-        Write(" ]", Panel);
-        var used = 2 + 4 + upper.Length + 2 + 1;
-        WriteDitherRule(Math.Max(2, FrameWidth - used));
+        var padding = Math.Max(1, FrameInner - 2 - contentColumns);
+        Write(new string(' ', padding), Panel);
+        WriteLine(" ║", Panel);
+    }
+
+    /// <summary>
+    /// A full-width horizontal rule drawn between two corner or junction glyphs,
+    /// with an optional inset title cartouche. The run between the corners is a
+    /// continuous line of <paramref name="fill"/>, so the corners actually join
+    /// the walls instead of floating.
+    /// </summary>
+    private static void FrameRule(char left, char right, char fill, string? title, ConsoleColor titleColor)
+    {
+        Write("  ", Panel);
+        Write(left.ToString(), Panel);
+
+        if (string.IsNullOrEmpty(title))
+        {
+            Write(new string(fill, FrameInner), Panel);
+        }
+        else
+        {
+            // Keep at least two fill glyphs on the right so the closing corner never
+            // gets shoved out past column 80 by an over-long title.
+            var text = FitHead(title, FrameInner - 8);
+            Write($"{fill}{fill}[ ", Panel);
+            Write(text, titleColor);
+            Write(" ]", Panel);
+            var used = 6 + text.Length; // two fills + "[ " + title + " ]"
+            Write(new string(fill, Math.Max(0, FrameInner - used)), Panel);
+        }
+
         WriteLine(right.ToString(), Panel);
     }
 
-    private static void WriteFramePadding(int contentWidth)
+    /// <summary>Clamps <paramref name="text"/> to <paramref name="max"/> columns, keeping the
+    /// head and marking the cut with a trailing ellipsis.</summary>
+    private static string FitHead(string text, int max)
     {
-        var padding = Math.Max(1, FrameWidth - 5 - contentWidth);
-        Write(new string(' ', padding), Panel);
-        WriteLine("║", Panel);
+        if (max < 1)
+        {
+            return string.Empty;
+        }
+
+        if (text.Length <= max)
+        {
+            return text;
+        }
+
+        return max == 1 ? "…" : text[..(max - 1)] + "…";
     }
 
-    /// <summary>A diffuse phosphor tile run, brighter in the middle like a CRT bloom.</summary>
-    private static void WriteDitherRule(int length)
+    /// <summary>Clamps <paramref name="text"/> to <paramref name="max"/> columns, keeping the
+    /// tail (the end of a path) and marking the cut with a leading ellipsis.</summary>
+    private static string FitTail(string text, int max)
     {
-        const string tiles = "░▒▓█▓▒░";
-        for (var index = 0; index < length; index++)
+        if (max < 1)
         {
-            var position = length <= 1 ? 0.5 : (double)index / (length - 1);
-            var distance = Math.Abs(position - 0.5) * 2;
-            var color = distance switch
-            {
-                < 0.22 => ConsoleColor.Green,
-                < 0.55 => ConsoleColor.DarkGreen,
-                _ => ConsoleColor.DarkGray,
-            };
-            Write(tiles[index % tiles.Length].ToString(), color);
+            return string.Empty;
         }
+
+        if (text.Length <= max)
+        {
+            return text;
+        }
+
+        return max == 1 ? "…" : "…" + text[(text.Length - (max - 1))..];
     }
 }
