@@ -252,5 +252,7 @@ public sealed class CommandLineOptions
 
         Your own titles can be added to %APPDATA%\HumbleRenamer\lexicon.txt — see the
         [titles] section of the built-in lexicon for the format.
+
+        Feedback and bug reports: https://github.com/pdearmore/RenameHumbleBookBundles/issues/new?template=feedback.yml
         """;
 }

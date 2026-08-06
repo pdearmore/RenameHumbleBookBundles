@@ -1,6 +1,7 @@
 using HumbleRename.Lookup;
 using HumbleRename.Naming;
 using HumbleRename.Renaming;
+using System.Diagnostics;
 
 namespace HumbleRename.Cli;
 
@@ -10,6 +11,7 @@ namespace HumbleRename.Cli;
 /// </summary>
 public sealed class InteractiveSession
 {
+    private const string FeedbackUrl = "https://github.com/pdearmore/RenameHumbleBookBundles/issues/new?template=feedback.yml";
     /// <summary>Name layouts offered on the format menu, with a worked example of each.</summary>
     private static readonly (string Name, string Template, string Example)[] TemplatePresets =
     [
@@ -118,6 +120,9 @@ public sealed class InteractiveSession
                 case 'U':
                     UndoLastRun();
                     break;
+                case 'F':
+                    OpenFeedbackForm();
+                    break;
                 case 'Q':
                     Console.WriteLine();
                     ConsoleUi.Muted("  Bye.");
@@ -141,12 +146,29 @@ public sealed class InteractiveSession
         Console.WriteLine();
         ConsoleUi.MenuItem("S", "Scan and preview");
         ConsoleUi.MenuItem("U", "Undo the last run in this folder");
+        ConsoleUi.MenuItem("F", "Send feedback or report a problem");
         ConsoleUi.MenuItem("Q", "Quit");
 
         ConsoleUi.Prompt("choose");
     }
 
     private static string OnOff(bool value) => value ? "Yes" : "No";
+
+    private static void OpenFeedbackForm()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(FeedbackUrl) { UseShellExecute = true });
+            ConsoleUi.Muted("  Opening the feedback form in your browser...");
+        }
+        catch
+        {
+            ConsoleUi.Warn("  Could not open your browser. Visit:");
+            ConsoleUi.Muted($"  {FeedbackUrl}");
+        }
+
+        ConsoleUi.Pause();
+    }
 
     private void ChooseFolder()
     {

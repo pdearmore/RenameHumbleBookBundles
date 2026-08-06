@@ -1,0 +1,54 @@
+name: Feedback or problem report
+description: Share an idea or help improve Humble Renamer.
+title: "[Feedback]: "
+labels: [feedback]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Humble Renamer. Please do not include private filenames,
+        personal documents, license keys, or passwords.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What would you like to share?
+      options:
+        - A problem or bug
+        - A feature idea
+        - General feedback
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Humble Renamer version
+      placeholder: e.g. 1.0.0
+  - type: dropdown
+    id: operating_system
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: Keep filenames and document details anonymous.
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Optional screenshot or extra context
+      description: Remove private filenames and document details before uploading.
