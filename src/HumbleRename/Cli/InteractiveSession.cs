@@ -211,7 +211,7 @@ public sealed class InteractiveSession
             var selected = _customTemplate is null && i == _templateIndex;
 
             ConsoleUi.Write(selected ? "   > [" : "     [", ConsoleColor.DarkGray);
-            ConsoleUi.Write((i + 1).ToString(), ConsoleColor.Yellow);
+            ConsoleUi.Write((i + 1).ToString(), ConsoleColor.Green);
             ConsoleUi.Write("]  ", ConsoleColor.DarkGray);
             ConsoleUi.WriteLine(name, selected ? ConsoleColor.White : ConsoleColor.Gray);
             ConsoleUi.Muted($"          {example}");
@@ -292,7 +292,7 @@ public sealed class InteractiveSession
             var selected = _customExtensions is null && i == _fileTypeIndex;
 
             ConsoleUi.Write(selected ? "   > [" : "     [", ConsoleColor.DarkGray);
-            ConsoleUi.Write((i + 1).ToString(), ConsoleColor.Yellow);
+            ConsoleUi.Write((i + 1).ToString(), ConsoleColor.Green);
             ConsoleUi.Write("]  ", ConsoleColor.DarkGray);
             ConsoleUi.WriteLine(name, selected ? ConsoleColor.White : ConsoleColor.Gray);
 
@@ -508,7 +508,7 @@ public sealed class InteractiveSession
         foreach (var entry in log.Entries)
         {
             Console.Write("   ");
-            ConsoleUi.Write(entry.To, ConsoleColor.DarkYellow);
+            ConsoleUi.Write(entry.To, ConsoleColor.DarkGreen);
             ConsoleUi.Write("  ->  ", ConsoleColor.DarkGray);
             ConsoleUi.WriteLine(entry.From, ConsoleColor.Green);
         }

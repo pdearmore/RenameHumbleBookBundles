@@ -12,6 +12,14 @@ namespace HumbleRename.Cli;
 /// </remarks>
 public static class ConsoleUi
 {
+    // Dearmore.net's green-phosphor terminal palette, mapped to the portable
+    // 16-colour console set. Consoles cannot reproduce CSS scanlines or glow,
+    // but the hierarchy stays intact in Windows Terminal and conhost.
+    private const ConsoleColor Structural = ConsoleColor.Green;
+    private const ConsoleColor Action = ConsoleColor.Green;
+    private const ConsoleColor Panel = ConsoleColor.DarkGreen;
+    private const ConsoleColor Body = ConsoleColor.Gray;
+
     private static readonly bool UseColor =
         !Console.IsOutputRedirected &&
         string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NO_COLOR"));
@@ -29,6 +37,16 @@ public static class ConsoleUi
         catch (Exception ex) when (ex is IOException or PlatformNotSupportedException)
         {
             // Some hosts refuse; ASCII output still works.
+        }
+
+        try
+        {
+            Console.BackgroundColor = ConsoleColor.Black;
+            Console.ForegroundColor = Body;
+        }
+        catch (IOException)
+        {
+            // Cosmetic only; some hosts do not expose console colours.
         }
     }
 
@@ -58,7 +76,7 @@ public static class ConsoleUi
     public static void Heading(string text)
     {
         Console.WriteLine();
-        WriteLine(text, ConsoleColor.Cyan);
+        WriteLine(text, Structural);
         WriteLine(new string('-', Math.Min(text.Length, SafeWidth())), ConsoleColor.DarkGray);
     }
 
@@ -97,7 +115,7 @@ public static class ConsoleUi
                 case RenameStatus.Rename:
                 case RenameStatus.Deduplicated:
                     Console.Write($"  {number}  ");
-                    WriteLine(action.OriginalName, ConsoleColor.DarkYellow);
+                    WriteLine(action.OriginalName, ConsoleColor.DarkGreen);
                     Console.Write(new string(' ', width + 3));
                     Write("-> ", ConsoleColor.DarkGray);
                     WriteLine(action.ProposedName, ConsoleColor.Green);
@@ -200,17 +218,17 @@ public static class ConsoleUi
         return char.ToUpperInvariant(key.KeyChar);
     }
 
-    /// <summary>Draws a warez-style section rule: ▓▒░ TITLE ░▒▓────────</summary>
+    /// <summary>Draws a compact green-phosphor text-mode section rule.</summary>
     public static void Section(string title)
     {
         Console.WriteLine();
-        Write("  ▓▒░ ", ConsoleColor.Magenta);
-        Write(title.ToUpperInvariant(), ConsoleColor.White);
-        Write(" ░▒▓", ConsoleColor.Magenta);
+        Write("  ┌─ ", Panel);
+        Write(title.ToUpperInvariant(), Structural);
+        Write(" ─", Panel);
 
-        var used = 6 + title.Length + 4;
+        var used = 6 + title.Length + 2;
         var remaining = Math.Max(0, Math.Min(SafeWidth() - 2, 78) - used);
-        WriteLine(new string('─', remaining), ConsoleColor.DarkGray);
+        WriteLine(new string('─', remaining), Panel);
         Console.WriteLine();
     }
 
@@ -220,7 +238,7 @@ public static class ConsoleUi
     public static void MenuItem(string key, string label, string? value = null, int labelWidth = 24)
     {
         Write("   [", ConsoleColor.DarkGray);
-        Write(key, ConsoleColor.Yellow);
+        Write(key, Action);
         Write("]  ", ConsoleColor.DarkGray);
 
         if (value is null)
@@ -229,20 +247,20 @@ public static class ConsoleUi
             return;
         }
 
-        Write(label + " ", ConsoleColor.Gray);
+        Write(label + " ", Body);
         var dots = Math.Max(1, labelWidth - label.Length);
         Write(new string('.', dots) + " ", ConsoleColor.DarkGray);
-        WriteLine(value, ConsoleColor.Cyan);
+        WriteLine(value, Structural);
     }
 
     /// <summary>Draws the prompt the user types their menu selection at.</summary>
     public static void Prompt(string label)
     {
         Console.WriteLine();
-        Write("  ▓▒░ ", ConsoleColor.Magenta);
-        Write(label, ConsoleColor.White);
-        Write(" ░▒▓ ", ConsoleColor.Magenta);
-        Write("> ", ConsoleColor.Yellow);
+        Write("  └─ ", Panel);
+        Write(label.ToUpperInvariant(), Structural);
+        Write(" ─┘ ", Panel);
+        Write("> ", Action);
     }
 
     public static void TryClear()
