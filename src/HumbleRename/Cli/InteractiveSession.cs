@@ -143,7 +143,7 @@ public sealed class InteractiveSession
         ConsoleUi.MenuItem("6", "File types", FileTypeName);
         ConsoleUi.MenuItem("7", "Download cloud files", OnOff(_hydrateCloudFiles));
 
-        Console.WriteLine();
+        ConsoleUi.MenuDivider();
         ConsoleUi.MenuItem("S", "Scan and preview");
         ConsoleUi.MenuItem("U", "Undo the last run in this folder");
         ConsoleUi.MenuItem("F", "Send feedback or report a problem");

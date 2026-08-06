@@ -48,27 +48,22 @@ public static class SplashScreen
         TryClear();
         Console.WriteLine();
 
-        WriteBar();
-        Console.WriteLine();
+        WriteTop("HUMBLE RENAMER // FILE LIBERATION UNIT");
+        WriteFrameRow("CRACKING THE CASE OF HUMBLE'S BORKED FILENAMES", ConsoleColor.DarkGreen);
+        WriteDivider();
 
         for (var row = 0; row < Logo.Length; row++)
         {
-            Console.Write("     ");
+            ConsoleUi.Write("  ║   ", ConsoleColor.DarkGreen);
             WriteShadowed(Logo[row], RowColors[row]);
+            WriteRightEdge(Logo[row].Length + 3);
             Console.WriteLine();
         }
 
-        Console.WriteLine();
-        WriteBar();
-
-        // Compact product line beneath the mark.
-        Console.Write("   ");
-        ConsoleUi.Write("· pROPER nAMES fOR hUMBLE bUNDLE cOMICS & bOOKS ·", ConsoleColor.Gray);
-        ConsoleUi.Write("   [ ", ConsoleColor.DarkGray);
-        ConsoleUi.Write($"v{version}", ConsoleColor.White);
-        ConsoleUi.WriteLine(" ]", ConsoleColor.DarkGray);
-
-        WriteBar();
+        WriteDivider();
+        WriteFrameRow("RESTORE · PREVIEW · RENAME · UNDO", ConsoleColor.Green);
+        WriteFrameRow($"RELEASE {version}  //  0-DAY NAME FIXER", ConsoleColor.Gray);
+        WriteBottom();
         Console.WriteLine();
     }
 
@@ -79,27 +74,47 @@ public static class SplashScreen
     public static void ShowCompact(string version)
     {
         Console.WriteLine();
-        WriteBar();
-
-        ConsoleUi.Write("  ┌─ ", ConsoleColor.DarkGreen);
-        ConsoleUi.Write("H U M B L E", ConsoleColor.Green);
-        ConsoleUi.Write("  ·  ", ConsoleColor.DarkGray);
-        ConsoleUi.Write("R E N A M E", ConsoleColor.Green);
-        ConsoleUi.Write(" ─┐", ConsoleColor.DarkGreen);
-        ConsoleUi.Write("   [ ", ConsoleColor.DarkGray);
-        ConsoleUi.Write($"v{version}", ConsoleColor.White);
-        ConsoleUi.WriteLine(" ]", ConsoleColor.DarkGray);
-
-        WriteBar();
+        WriteTop("H U M B L E  //  R E N A M E R");
+        WriteFrameRow($"FILE LIBERATION UNIT  //  RELEASE {version}", ConsoleColor.Green);
+        WriteBottom();
     }
 
-    /// <summary>Draws the dim phosphor divider used by the Dearmore-style shell.</summary>
-    private static void WriteBar()
+    private static void WriteTop(string label)
     {
-        var fill = new string('═', Math.Max(4, Width - 8));
-        ConsoleUi.Write("  ╔", ConsoleColor.DarkGreen);
-        ConsoleUi.Write(fill, ConsoleColor.DarkGreen);
+        ConsoleUi.Write("  ╔═[ ", ConsoleColor.DarkGreen);
+        ConsoleUi.Write(label, ConsoleColor.Green);
+        ConsoleUi.Write(" ]", ConsoleColor.DarkGreen);
+        var used = 2 + 4 + label.Length + 2 + 1;
+        ConsoleUi.Write(new string('═', Math.Max(2, Width - used)), ConsoleColor.DarkGreen);
         ConsoleUi.WriteLine("╗", ConsoleColor.DarkGreen);
+    }
+
+    private static void WriteDivider()
+    {
+        ConsoleUi.Write("  ╠", ConsoleColor.DarkGreen);
+        ConsoleUi.Write(new string('═', Width - 2), ConsoleColor.DarkGreen);
+        ConsoleUi.WriteLine("╣", ConsoleColor.DarkGreen);
+    }
+
+    private static void WriteBottom()
+    {
+        ConsoleUi.Write("  ╚", ConsoleColor.DarkGreen);
+        ConsoleUi.Write(new string('═', Width - 2), ConsoleColor.DarkGreen);
+        ConsoleUi.WriteLine("╝", ConsoleColor.DarkGreen);
+    }
+
+    private static void WriteFrameRow(string text, ConsoleColor color)
+    {
+        ConsoleUi.Write("  ║ ", ConsoleColor.DarkGreen);
+        ConsoleUi.Write(text, color);
+        WriteRightEdge(text.Length + 1);
+        Console.WriteLine();
+    }
+
+    private static void WriteRightEdge(int used)
+    {
+        ConsoleUi.Write(new string(' ', Math.Max(1, Width - 4 - used)), ConsoleColor.DarkGreen);
+        ConsoleUi.Write("║", ConsoleColor.DarkGreen);
     }
 
     /// <summary>

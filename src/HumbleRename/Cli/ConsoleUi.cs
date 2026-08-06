@@ -12,6 +12,7 @@ namespace HumbleRename.Cli;
 /// </remarks>
 public static class ConsoleUi
 {
+    private const int FrameWidth = 78;
     // Dearmore.net's green-phosphor terminal palette, mapped to the portable
     // 16-colour console set. Consoles cannot reproduce CSS scanlines or glow,
     // but the hierarchy stays intact in Windows Terminal and conhost.
@@ -222,14 +223,7 @@ public static class ConsoleUi
     public static void Section(string title)
     {
         Console.WriteLine();
-        Write("  ┌─ ", Panel);
-        Write(title.ToUpperInvariant(), Structural);
-        Write(" ─", Panel);
-
-        var used = 6 + title.Length + 2;
-        var remaining = Math.Max(0, Math.Min(SafeWidth() - 2, 78) - used);
-        WriteLine(new string('─', remaining), Panel);
-        Console.WriteLine();
+        WriteFrameEdge('╔', '╗', title);
     }
 
     /// <summary>
@@ -237,29 +231,39 @@ public static class ConsoleUi
     /// </summary>
     public static void MenuItem(string key, string label, string? value = null, int labelWidth = 24)
     {
-        Write("   [", ConsoleColor.DarkGray);
+        Write("  ║ ", Panel);
+        Write("[", Panel);
         Write(key, Action);
-        Write("]  ", ConsoleColor.DarkGray);
+        Write("]  ", Panel);
 
         if (value is null)
         {
-            WriteLine(label, ConsoleColor.Gray);
+            Write(label, Body);
+            WriteFramePadding(5 + key.Length + label.Length);
             return;
         }
 
         Write(label + " ", Body);
         var dots = Math.Max(1, labelWidth - label.Length);
-        Write(new string('.', dots) + " ", ConsoleColor.DarkGray);
-        WriteLine(value, Structural);
+        Write(new string('·', dots) + " ", ConsoleColor.DarkGreen);
+        Write(value, Structural);
+        WriteFramePadding(5 + key.Length + label.Length + 1 + dots + 1 + value.Length);
+    }
+
+    /// <summary>Separates primary actions from configuration without breaking the frame.</summary>
+    public static void MenuDivider()
+    {
+        Write("  ╟", Panel);
+        Write(new string('─', FrameWidth - 2), Panel);
+        WriteLine("╢", Panel);
     }
 
     /// <summary>Draws the prompt the user types their menu selection at.</summary>
     public static void Prompt(string label)
     {
         Console.WriteLine();
-        Write("  └─ ", Panel);
-        Write(label.ToUpperInvariant(), Structural);
-        Write(" ─┘ ", Panel);
+        WriteFrameEdge('╚', '╝', label);
+        Write("  :: ", Panel);
         Write("> ", Action);
     }
 
@@ -352,5 +356,23 @@ public static class ConsoleUi
         {
             return 80;
         }
+    }
+
+    private static void WriteFrameEdge(char left, char right, string label)
+    {
+        var upper = label.ToUpperInvariant();
+        Write($"  {left}═[ ", Panel);
+        Write(upper, Structural);
+        Write(" ]", Panel);
+        var used = 2 + 4 + upper.Length + 2 + 1;
+        Write(new string('═', Math.Max(2, FrameWidth - used)), Panel);
+        WriteLine(right.ToString(), Panel);
+    }
+
+    private static void WriteFramePadding(int contentWidth)
+    {
+        var padding = Math.Max(1, FrameWidth - 4 - contentWidth);
+        Write(new string(' ', padding), Panel);
+        WriteLine("║", Panel);
     }
 }
