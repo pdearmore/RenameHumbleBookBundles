@@ -53,7 +53,11 @@ cp '__BINARY__' "$stage/HumbleRenamer"
 chmod +x "$stage/HumbleRenamer"
 "$stage/HumbleRenamer"
 '@
-    $interactiveScript.Replace('__BINARY__', $linuxBinary) | & wsl.exe -d $Distribution -- tee $launcher | Out-Null
+    # Base64 avoids PowerShell's pipeline newline conversion, which would otherwise leave CRLF
+    # line endings in the Bash launcher and prevent Linux from locating the executable.
+    $launcherText = $interactiveScript.Replace('__BINARY__', $linuxBinary).Replace("`r`n", "`n")
+    $launcherBase64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($launcherText))
+    & wsl.exe -d $Distribution -- bash -lc "echo '$launcherBase64' | base64 --decode > '$launcher'; chmod +x '$launcher'"
 
     Write-Host "Starting the Linux Humble Renamer menu inside WSL ($Distribution)..."
     & wsl.exe -d $Distribution -- bash $launcher
