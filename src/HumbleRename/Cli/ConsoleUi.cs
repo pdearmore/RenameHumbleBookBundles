@@ -12,7 +12,9 @@ namespace HumbleRename.Cli;
 /// </remarks>
 public static class ConsoleUi
 {
-    private const int FrameWidth = 78;
+    // Includes the two-space left gutter. Every top, side, divider, and bottom edge uses this
+    // one width so paired corners always land in the same column.
+    private const int FrameWidth = 80;
     // Dearmore.net's green-phosphor terminal palette, mapped to the portable
     // 16-colour console set. Consoles cannot reproduce CSS scanlines or glow,
     // but the hierarchy stays intact in Windows Terminal and conhost.
@@ -254,14 +256,13 @@ public static class ConsoleUi
     public static void MenuDivider()
     {
         Write("  ╟", Panel);
-        Write(new string('─', FrameWidth - 2), Panel);
+        WriteDitherRule(FrameWidth - 4);
         WriteLine("╢", Panel);
     }
 
     /// <summary>Draws the prompt the user types their menu selection at.</summary>
     public static void Prompt(string label)
     {
-        Console.WriteLine();
         WriteFrameEdge('╚', '╝', label);
         Write("  :: ", Panel);
         Write("> ", Action);
@@ -365,14 +366,32 @@ public static class ConsoleUi
         Write(upper, Structural);
         Write(" ]", Panel);
         var used = 2 + 4 + upper.Length + 2 + 1;
-        Write(new string('═', Math.Max(2, FrameWidth - used)), Panel);
+        WriteDitherRule(Math.Max(2, FrameWidth - used));
         WriteLine(right.ToString(), Panel);
     }
 
     private static void WriteFramePadding(int contentWidth)
     {
-        var padding = Math.Max(1, FrameWidth - 4 - contentWidth);
+        var padding = Math.Max(1, FrameWidth - 5 - contentWidth);
         Write(new string(' ', padding), Panel);
         WriteLine("║", Panel);
+    }
+
+    /// <summary>A diffuse phosphor tile run, brighter in the middle like a CRT bloom.</summary>
+    private static void WriteDitherRule(int length)
+    {
+        const string tiles = "░▒▓█▓▒░";
+        for (var index = 0; index < length; index++)
+        {
+            var position = length <= 1 ? 0.5 : (double)index / (length - 1);
+            var distance = Math.Abs(position - 0.5) * 2;
+            var color = distance switch
+            {
+                < 0.22 => ConsoleColor.Green,
+                < 0.55 => ConsoleColor.DarkGreen,
+                _ => ConsoleColor.DarkGray,
+            };
+            Write(tiles[index % tiles.Length].ToString(), color);
+        }
     }
 }

@@ -16,7 +16,8 @@ public static class SplashScreen
     /// <summary>Glyphs forming the drop shadow.</summary>
     private const string ShadowGlyphs = "╗║╝═╚╔╦╩╬╠╣";
 
-    private const int Width = 78;
+    // Includes the two-space left gutter, matching ConsoleUi's 80-column frame.
+    private const int Width = 80;
 
     private static readonly string[] Logo =
     [
@@ -81,25 +82,25 @@ public static class SplashScreen
 
     private static void WriteTop(string label)
     {
-        ConsoleUi.Write("  ╔═[ ", ConsoleColor.DarkGreen);
+        ConsoleUi.Write("  ╔░▒▓[ ", ConsoleColor.DarkGreen);
         ConsoleUi.Write(label, ConsoleColor.Green);
-        ConsoleUi.Write(" ]", ConsoleColor.DarkGreen);
-        var used = 2 + 4 + label.Length + 2 + 1;
-        ConsoleUi.Write(new string('═', Math.Max(2, Width - used)), ConsoleColor.DarkGreen);
+        ConsoleUi.Write(" ]▓▒░", ConsoleColor.DarkGreen);
+        var used = 2 + 6 + label.Length + 5 + 1;
+        WriteTileProgression(Math.Max(2, Width - used));
         ConsoleUi.WriteLine("╗", ConsoleColor.DarkGreen);
     }
 
     private static void WriteDivider()
     {
         ConsoleUi.Write("  ╠", ConsoleColor.DarkGreen);
-        ConsoleUi.Write(new string('═', Width - 2), ConsoleColor.DarkGreen);
+        WriteTileProgression(Width - 4);
         ConsoleUi.WriteLine("╣", ConsoleColor.DarkGreen);
     }
 
     private static void WriteBottom()
     {
         ConsoleUi.Write("  ╚", ConsoleColor.DarkGreen);
-        ConsoleUi.Write(new string('═', Width - 2), ConsoleColor.DarkGreen);
+        WriteTileProgression(Width - 4);
         ConsoleUi.WriteLine("╝", ConsoleColor.DarkGreen);
     }
 
@@ -117,17 +118,44 @@ public static class SplashScreen
         ConsoleUi.Write("║", ConsoleColor.DarkGreen);
     }
 
+    private static void WriteTileProgression(int length)
+    {
+        const string tiles = "░▒▓█▓▒░";
+        for (var index = 0; index < length; index++)
+        {
+            var normalized = length <= 1 ? 0.5 : (double)index / (length - 1);
+            var distance = Math.Abs(normalized - 0.5) * 2;
+            var color = distance switch
+            {
+                < 0.16 => ConsoleColor.White,
+                < 0.42 => ConsoleColor.Green,
+                < 0.72 => ConsoleColor.DarkGreen,
+                _ => ConsoleColor.DarkGray,
+            };
+            ConsoleUi.Write(tiles[index % tiles.Length].ToString(), color);
+        }
+    }
+
     /// <summary>
     /// Writes one logo row, colouring letter faces and drop shadow separately so the
     /// glyphs read as raised blocks rather than a flat wall of colour.
     /// </summary>
     private static void WriteShadowed(string line, ConsoleColor faceColor)
     {
-        foreach (var glyph in line)
+        for (var index = 0; index < line.Length; index++)
         {
+            var glyph = line[index];
             if (BlockGlyphs.Contains(glyph))
             {
-                ConsoleUi.Write(glyph.ToString(), faceColor);
+                var normalized = line.Length <= 1 ? 0.5 : (double)index / (line.Length - 1);
+                var distance = Math.Abs(normalized - 0.5) * 2;
+                var color = distance switch
+                {
+                    < 0.18 => ConsoleColor.White,
+                    < 0.48 => ConsoleColor.Green,
+                    _ => faceColor,
+                };
+                ConsoleUi.Write(glyph.ToString(), color);
             }
             else if (ShadowGlyphs.Contains(glyph))
             {
