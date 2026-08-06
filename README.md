@@ -260,6 +260,12 @@ The script publishes `linux-x64`, stages the binary in WSL's temporary directory
 runs `--version` plus `--help`. Use `-Distribution <name>` to target a different WSL
 distribution, or `-SkipPublish` to rerun the smoke test against the previously built binary.
 
+To use the Linux version through its normal menu instead of running a smoke test:
+
+```powershell
+.\test-wsl.ps1 -Interactive
+```
+
 Layout:
 
 | Path | Contents |
