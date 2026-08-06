@@ -1,7 +1,8 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using HumbleRename.Lookup;
 using HumbleRename.Naming;
 using HumbleRename.Renaming;
-using System.Diagnostics;
 
 namespace HumbleRename.Cli;
 
@@ -11,7 +12,6 @@ namespace HumbleRename.Cli;
 /// </summary>
 public sealed class InteractiveSession
 {
-    private const string FeedbackUrl = "https://github.com/pdearmore/RenameHumbleBookBundles/issues/new?template=feedback.yml";
     /// <summary>Name layouts offered on the format menu, with a worked example of each.</summary>
     private static readonly (string Name, string Template, string Example)[] TemplatePresets =
     [
@@ -46,10 +46,28 @@ public sealed class InteractiveSession
     private bool _readMetadata = true;
     private bool _hydrateCloudFiles;
 
+    /// <summary>Comic Vine key from a paste or the saved store; takes precedence over the environment.</summary>
+    private string? _comicVineKey;
+
+    /// <summary>True when <see cref="_comicVineKey"/> is persisted to the profile, not just this run.</summary>
+    private bool _comicVineKeySaved;
+
+    /// <summary>Where a free Comic Vine API key is created.</summary>
+    private const string ComicVineKeyUrl = "https://comicvine.gamespot.com/api/";
+
+    /// <summary>The feedback / bug-report form.</summary>
+    private const string FeedbackUrl = "https://github.com/pdearmore/RenameHumbleBookBundles/issues/new?template=feedback.yml";
+
     public InteractiveSession(string? initialFolder, string version)
     {
         _version = version;
 
+        // Pick up a key and the menu choices remembered from a previous run.
+        _comicVineKey = ComicVineKeyStore.Load();
+        _comicVineKeySaved = _comicVineKey is not null;
+        LoadSettings();
+
+        // A folder passed on the command line or dragged onto the exe wins over the saved one.
         if (!string.IsNullOrWhiteSpace(initialFolder))
         {
             var resolved = TryResolveFolder(initialFolder);
@@ -59,6 +77,56 @@ public sealed class InteractiveSession
             }
         }
     }
+
+    /// <summary>Applies the settings remembered from a previous run.</summary>
+    private void LoadSettings()
+    {
+        var saved = SessionSettings.Load();
+
+        // A folder that has since moved or been deleted is quietly forgotten.
+        if (!string.IsNullOrWhiteSpace(saved.Folder) && Directory.Exists(saved.Folder))
+        {
+            _folder = saved.Folder;
+        }
+
+        if (!string.IsNullOrWhiteSpace(saved.CustomTemplate))
+        {
+            _customTemplate = saved.CustomTemplate;
+        }
+        else if (saved.TemplateIndex >= 0 && saved.TemplateIndex < TemplatePresets.Length)
+        {
+            _templateIndex = saved.TemplateIndex;
+        }
+
+        if (saved.CustomExtensions is { Count: > 0 })
+        {
+            _customExtensions = new HashSet<string>(saved.CustomExtensions, StringComparer.OrdinalIgnoreCase);
+        }
+        else if (saved.FileTypeIndex >= 0 && saved.FileTypeIndex < FileTypePresets.Length)
+        {
+            _fileTypeIndex = saved.FileTypeIndex;
+        }
+
+        _recurse = saved.Recurse;
+        _online = saved.Online;
+        _readMetadata = saved.ReadMetadata;
+        _hydrateCloudFiles = saved.HydrateCloudFiles;
+    }
+
+    /// <summary>Remembers the current menu choices for next time (the key persists separately).</summary>
+    private void SaveSettings() =>
+        new SessionSettings
+        {
+            Folder = _folder,
+            TemplateIndex = _templateIndex,
+            CustomTemplate = _customTemplate,
+            FileTypeIndex = _fileTypeIndex,
+            CustomExtensions = _customExtensions?.ToArray(),
+            Recurse = _recurse,
+            Online = _online,
+            ReadMetadata = _readMetadata,
+            HydrateCloudFiles = _hydrateCloudFiles,
+        }.Save();
 
     private string ActiveTemplate => _customTemplate ?? TemplatePresets[_templateIndex].Template;
 
@@ -91,9 +159,11 @@ public sealed class InteractiveSession
             firstPass = false;
             DrawMainMenu();
 
+            var choice = ConsoleUi.ReadChoice();
+
             try
             {
-                switch (ConsoleUi.ReadChoice())
+                switch (choice)
                 {
                     case '1':
                         ChooseFolder();
@@ -115,6 +185,9 @@ public sealed class InteractiveSession
                         break;
                     case '7':
                         _hydrateCloudFiles = !_hydrateCloudFiles;
+                        break;
+                    case '8':
+                        ChooseComicVineKey();
                         break;
                     case 'S':
                         await ScanAsync(cancellationToken);
@@ -145,20 +218,36 @@ public sealed class InteractiveSession
                 ConsoleUi.Muted("  Back to the menu - your settings are still set.");
                 ConsoleUi.Pause();
             }
+
+            // A setting or the folder may have just changed; remember it for next time.
+            if (choice is >= '1' and <= '7' or 'S')
+            {
+                SaveSettings();
+            }
         }
     }
 
     private void DrawMainMenu()
     {
+        // The nudge sits above the frame: dropping it between the last row and the
+        // prompt would break the box, and after the prompt it would land on the caret.
+        if (!HasComicVineKey)
+        {
+            Console.WriteLine();
+            ConsoleUi.Warn("  Comic Vine key not set - comics match far better with one, and it's free.");
+            ConsoleUi.Muted($"  Add one under [8], or get it at {ComicVineKeyUrl}");
+        }
+
         ConsoleUi.Section("main menu");
 
         ConsoleUi.MenuItem("1", "Folder", _folder ?? "(not set)");
         ConsoleUi.MenuItem("2", "Name format", TemplateName);
         ConsoleUi.MenuItem("3", "Include subfolders", OnOff(_recurse));
-        ConsoleUi.MenuItem("4", "Online lookup", OnOff(_online));
+        ConsoleUi.MenuItem("4", "Online lookup", OnlineLookupStatus());
         ConsoleUi.MenuItem("5", "Read file metadata", OnOff(_readMetadata));
         ConsoleUi.MenuItem("6", "File types", FileTypeName);
         ConsoleUi.MenuItem("7", "Download cloud files", OnOff(_hydrateCloudFiles));
+        ConsoleUi.MenuItem("8", "Comic Vine key", ComicVineKeyStatus);
 
         ConsoleUi.MenuDivider();
         ConsoleUi.MenuItem("S", "Scan and preview");
@@ -187,9 +276,23 @@ public sealed class InteractiveSession
         ConsoleUi.Pause();
     }
 
+    /// <summary>Flags an enabled lookup that has no Comic Vine key — its weakest spot for comics.</summary>
+    private string OnlineLookupStatus() =>
+        _online && !HasComicVineKey ? "Yes (no Comic Vine key)" : OnOff(_online);
+
+    /// <summary>True when a Comic Vine key is available, from this session or the environment.</summary>
+    private bool HasComicVineKey =>
+        !string.IsNullOrWhiteSpace(_comicVineKey) ||
+        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("HUMBLERENAMER_COMICVINE_KEY"));
+
+    private string ComicVineKeyStatus =>
+        !string.IsNullOrWhiteSpace(_comicVineKey) ? (_comicVineKeySaved ? "Saved" : "Set for this session")
+        : !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("HUMBLERENAMER_COMICVINE_KEY")) ? "From environment"
+        : "Not set";
+
     private void ChooseFolder()
     {
-        ConsoleUi.Section("which folder");
+        ConsoleUi.Section("Which Folder");
 
         if (_folder is not null)
         {
@@ -242,21 +345,24 @@ public sealed class InteractiveSession
 
     private void ChooseTemplate()
     {
-        ConsoleUi.Section("name format");
+        ConsoleUi.Section("Name Format");
 
         for (var i = 0; i < TemplatePresets.Length; i++)
         {
             var (name, _, example) = TemplatePresets[i];
             var selected = _customTemplate is null && i == _templateIndex;
 
-            ConsoleUi.MenuChoice((i + 1).ToString(), name, selected);
-            ConsoleUi.MenuNote(example);
+            ConsoleUi.Write(selected ? "   > [" : "     [", ConsoleColor.DarkGray);
+            ConsoleUi.Write((i + 1).ToString(), ConsoleColor.Yellow);
+            ConsoleUi.Write("]  ", ConsoleColor.DarkGray);
+            ConsoleUi.WriteLine(name, selected ? ConsoleColor.White : ConsoleColor.Gray);
+            ConsoleUi.Muted($"          {example}");
         }
 
-        ConsoleUi.MenuDivider();
+        Console.WriteLine();
         ConsoleUi.MenuItem("C", "Custom template...");
         ConsoleUi.MenuItem("B", "Back");
-        ConsoleUi.Prompt("choose");
+        ConsoleUi.Prompt("Choose");
 
         var choice = ConsoleUi.ReadChoice();
 
@@ -279,7 +385,7 @@ public sealed class InteractiveSession
 
     private void EnterCustomTemplate()
     {
-        ConsoleUi.Section("custom template");
+        ConsoleUi.Section("Custom Template");
 
         ConsoleUi.Muted("  Tokens:  Series  Title  Subtitle  Volume  Issue  Book  Year");
         ConsoleUi.Muted("           Author  Publisher  Editions");
@@ -320,25 +426,28 @@ public sealed class InteractiveSession
 
     private void ChooseFileTypes()
     {
-        ConsoleUi.Section("file types");
+        ConsoleUi.Section("File Types");
 
         for (var i = 0; i < FileTypePresets.Length; i++)
         {
             var (name, extensions) = FileTypePresets[i];
             var selected = _customExtensions is null && i == _fileTypeIndex;
 
-            ConsoleUi.MenuChoice((i + 1).ToString(), name, selected);
+            ConsoleUi.Write(selected ? "   > [" : "     [", ConsoleColor.DarkGray);
+            ConsoleUi.Write((i + 1).ToString(), ConsoleColor.Yellow);
+            ConsoleUi.Write("]  ", ConsoleColor.DarkGray);
+            ConsoleUi.WriteLine(name, selected ? ConsoleColor.White : ConsoleColor.Gray);
 
             if (extensions.Length > 0)
             {
-                ConsoleUi.MenuNote(string.Join("  ", extensions));
+                ConsoleUi.Muted("          " + string.Join("  ", extensions));
             }
         }
 
-        ConsoleUi.MenuDivider();
+        Console.WriteLine();
         ConsoleUi.MenuItem("C", "Custom list...");
         ConsoleUi.MenuItem("B", "Back");
-        ConsoleUi.Prompt("choose");
+        ConsoleUi.Prompt("Choose");
 
         var choice = ConsoleUi.ReadChoice();
 
@@ -361,7 +470,7 @@ public sealed class InteractiveSession
 
     private void EnterCustomExtensions()
     {
-        ConsoleUi.Section("custom file types");
+        ConsoleUi.Section("Custom File Types");
         ConsoleUi.Muted("  Comma separated, for example:  cbz, cbr, pdf");
         Console.WriteLine();
         ConsoleUi.Write("  Extensions (blank to cancel): ", ConsoleColor.White);
@@ -379,6 +488,72 @@ public sealed class InteractiveSession
         }
 
         _customExtensions = set.Count > 0 ? set : null;
+    }
+
+    private void ChooseComicVineKey()
+    {
+        ConsoleUi.Section("Comic Vine Key");
+
+        ConsoleUi.Muted("  Comic Vine is by far the best source for comics, and a key is free.");
+        ConsoleUi.Muted("  It only comes into play when online lookup [4] is on.");
+        Console.WriteLine();
+        ConsoleUi.Write("  Current: ", ConsoleColor.Gray);
+        ConsoleUi.WriteLine(ComicVineKeyStatus, ConsoleColor.Cyan);
+        Console.WriteLine();
+
+        ConsoleUi.MenuItem("P", "Paste and save a key");
+        ConsoleUi.MenuItem("G", "Get a free key (opens the signup page)");
+        ConsoleUi.MenuItem("C", "Clear the saved key");
+        ConsoleUi.MenuItem("B", "Back");
+        ConsoleUi.Prompt("Choose");
+
+        switch (ConsoleUi.ReadChoice())
+        {
+            case 'P':
+                PasteComicVineKey();
+                break;
+            case 'G':
+                OpenInDefaultViewer(ComicVineKeyUrl);
+                break;
+            case 'C':
+                _comicVineKey = null;
+                _comicVineKeySaved = false;
+                ComicVineKeyStore.Delete();
+                Console.WriteLine();
+                ConsoleUi.Muted("  Saved key removed.");
+                ConsoleUi.Pause();
+                break;
+        }
+    }
+
+    private void PasteComicVineKey()
+    {
+        Console.WriteLine();
+        ConsoleUi.Muted($"  Paste the key shown at {ComicVineKeyUrl} when signed in.");
+        ConsoleUi.Muted("  It is saved to your user profile, encrypted, not the app folder. Blank to cancel.");
+        Console.WriteLine();
+        ConsoleUi.Write("  Key: ", ConsoleColor.White);
+
+        var input = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return;
+        }
+
+        _comicVineKey = input.Trim();
+        _comicVineKeySaved = ComicVineKeyStore.Save(_comicVineKey);
+
+        Console.WriteLine();
+        if (_comicVineKeySaved)
+        {
+            ConsoleUi.WriteLine("  Key saved - it will be remembered next time.", ConsoleColor.Green);
+        }
+        else
+        {
+            ConsoleUi.Warn("  Key set for this session (it could not be saved for next time).");
+        }
+
+        ConsoleUi.Pause();
     }
 
     private RenameOptions BuildOptions()
@@ -401,7 +576,7 @@ public sealed class InteractiveSession
     {
         if (_folder is null)
         {
-            ConsoleUi.Section("no folder yet");
+            ConsoleUi.Section("No Folder Yet");
             ConsoleUi.Warn("  Pick a folder first with [1].");
             ConsoleUi.Pause();
             return;
@@ -415,7 +590,7 @@ public sealed class InteractiveSession
         {
             if (_online)
             {
-                lookup = LookupService.Create();
+                lookup = LookupService.Create(_comicVineKey);
                 ConsoleUi.Muted($"  Catalogues: {string.Join(", ", lookup.ActiveProviders)}");
             }
 
@@ -436,7 +611,7 @@ public sealed class InteractiveSession
             }
 
             ConsoleUi.WritePlan(plan);
-            ReviewPlan(plan);
+            await ReviewPlanAsync(plan, planner, lookup, cancellationToken);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException)
         {
@@ -450,26 +625,383 @@ public sealed class InteractiveSession
         }
     }
 
-    /// <summary>Offers the apply/back choice once the preview is on screen.</summary>
-    private void ReviewPlan(RenamePlan plan)
+    /// <summary>
+    /// Offers the save / hand-review / back choice once the preview is on screen. Every
+    /// scanned file is eligible for hand-review, so it is offered even when nothing would
+    /// change by default.
+    /// </summary>
+    private async Task ReviewPlanAsync(
+        RenamePlan plan,
+        RenamePlanner planner,
+        LookupService? scanLookup,
+        CancellationToken cancellationToken)
+    {
+        if (plan.ChangeCount == 0)
+        {
+            ConsoleUi.Section("All Correct");
+            ConsoleUi.Muted("  Every file already matches its preferred name.");
+            ConsoleUi.MenuItem("H", "Hand-review each file anyway");
+            ConsoleUi.MenuItem("B", "Back to the menu");
+            ConsoleUi.Prompt("Choose");
+
+            if (ConsoleUi.ReadChoice() == 'H')
+            {
+                await RunHandReviewAsync(plan, planner, scanLookup, cancellationToken);
+            }
+            else
+            {
+                Console.WriteLine();
+                ConsoleUi.Muted("  Nothing was changed.");
+                ConsoleUi.Pause();
+            }
+
+            return;
+        }
+
+        ConsoleUi.Section("Save?");
+        ConsoleUi.MenuItem("A", $"Save these {plan.ChangeCount} rename(s)");
+        ConsoleUi.MenuItem("H", "Hand-review each file, one at a time");
+        ConsoleUi.MenuItem("B", "Back to the menu, change nothing");
+        ConsoleUi.Prompt("Choose");
+
+        switch (ConsoleUi.ReadChoice())
+        {
+            case 'A':
+                ApplyPlan(plan);
+                break;
+            case 'H':
+                await RunHandReviewAsync(plan, planner, scanLookup, cancellationToken);
+                break;
+            default:
+                Console.WriteLine();
+                ConsoleUi.Muted("  Nothing was changed.");
+                ConsoleUi.Pause();
+                break;
+        }
+    }
+
+    /// <summary>Hand-reviews the plan, shows the revised list, then applies it.</summary>
+    private async Task RunHandReviewAsync(
+        RenamePlan plan,
+        RenamePlanner planner,
+        LookupService? scanLookup,
+        CancellationToken cancellationToken)
+    {
+        var revised = await HandReviewAsync(plan, planner, scanLookup, cancellationToken);
+        ConsoleUi.TryClear();
+        ConsoleUi.WritePlan(revised);
+        ApplyPlan(revised);
+    }
+
+    /// <summary>
+    /// Walks the files with the arrow keys, showing the names the tool derived so the
+    /// user can pick one, type their own, look it up online, or keep the current name.
+    /// Up/Down move the highlight through the current file's options; Left/Right (and
+    /// Enter for next) move between files, keeping whatever option is highlighted. Each
+    /// file's candidates and choice persist across navigation, so moving back and forth
+    /// never loses anything.
+    /// </summary>
+    private async Task<RenamePlan> HandReviewAsync(
+        RenamePlan plan,
+        RenamePlanner planner,
+        LookupService? scanLookup,
+        CancellationToken cancellationToken)
+    {
+        var count = plan.Actions.Count;
+        if (count == 0)
+        {
+            return plan;
+        }
+
+        // Per-file state kept for the whole review so moving back and forth never loses
+        // a fetched candidate or a chosen answer.
+        var lists = new List<NameCandidate>[count];
+        var selected = new int[count];
+        var visited = new bool[count];
+
+        // Reuse the scan's catalogue connection when online was on; otherwise open one
+        // lazily the first time the user asks, and dispose only what we opened here.
+        var lookup = scanLookup;
+        var createdLookup = false;
+
+        try
+        {
+            var i = 0;
+            var finished = false;
+
+            while (!finished && i < count)
+            {
+                var action = plan.Actions[i];
+
+                if (!visited[i])
+                {
+                    lists[i] = [.. DisplayCandidates(action)];
+                    selected[i] = IndexOfName(lists[i], action.ProposedName);
+                    visited[i] = true;
+                }
+
+                var candidates = lists[i];
+
+                ConsoleUi.TryClear();
+                SplashScreen.ShowCompact(_version);
+                DrawReviewFile(i + 1, count, action, candidates, selected[i]);
+
+                var pressed = ConsoleUi.ReadKeyInfo();
+                var ch = char.ToUpperInvariant(pressed.KeyChar);
+
+                // Up/Down move the highlight within this file; Left/Right move between
+                // files. The '-' '+' ',' '.' stand-ins keep the flow scriptable in tests.
+                var selectUp = pressed.Key is ConsoleKey.UpArrow || ch == '-';
+                var selectDown = pressed.Key is ConsoleKey.DownArrow || ch == '+';
+                var toPrevious = pressed.Key is ConsoleKey.LeftArrow || ch is ',' or '<';
+                var toNext = pressed.Key is ConsoleKey.RightArrow or ConsoleKey.Enter || ch is '.' or '>';
+
+                if (selectUp)
+                {
+                    if (selected[i] > 0)
+                    {
+                        selected[i]--;
+                    }
+                }
+                else if (selectDown)
+                {
+                    if (selected[i] < candidates.Count - 1)
+                    {
+                        selected[i]++;
+                    }
+                }
+                else if (toPrevious)
+                {
+                    if (i > 0)
+                    {
+                        i--;
+                    }
+                }
+                else if (toNext)
+                {
+                    // Move to the next file keeping the highlighted option (in selected[i]).
+                    i++;
+                }
+                else if (char.IsDigit(ch))
+                {
+                    var pick = ch - '1';
+                    if (pick >= 0 && pick < candidates.Count)
+                    {
+                        selected[i] = pick;
+                        i++;
+                    }
+                }
+                else if (ch == 'E')
+                {
+                    var custom = PromptForCustomName(action.OriginalName);
+                    if (custom is not null)
+                    {
+                        candidates.Add(new NameCandidate
+                        {
+                            Label = "your name",
+                            Name = custom + Path.GetExtension(action.OriginalName),
+                        });
+                        selected[i] = candidates.Count - 1;
+                        i++;
+                    }
+                }
+                else if (ch == 'S')
+                {
+                    selected[i] = IndexOfName(candidates, action.OriginalName);
+                    i++;
+                }
+                else if (ch == 'O')
+                {
+                    // Look at the actual file; stay on it afterwards.
+                    OpenInDefaultViewer(action.OriginalPath);
+                }
+                else if (ch == 'L')
+                {
+                    if (lookup is null)
+                    {
+                        lookup = LookupService.Create(_comicVineKey);
+                        createdLookup = true;
+                    }
+
+                    var added = await AddOnlineCandidateAsync(
+                        planner, lookup, action, candidates, cancellationToken);
+                    if (added >= 0)
+                    {
+                        selected[i] = added; // highlight the freshly fetched name
+                    }
+                }
+                else if (ch == 'Q')
+                {
+                    finished = true;
+                }
+            }
+
+            var chosen = new Dictionary<int, string>();
+            for (var r = 0; r < count; r++)
+            {
+                if (visited[r])
+                {
+                    chosen[r] = BaseNameOf(lists[r][selected[r]].Name);
+                }
+            }
+
+            return RenamePlanner.RebuildWithChosenNames(plan, chosen);
+        }
+        finally
+        {
+            if (createdLookup)
+            {
+                lookup!.Dispose();
+            }
+        }
+    }
+
+    /// <summary>Index of the candidate whose name matches, or 0 (the top choice) if none do.</summary>
+    private static int IndexOfName(List<NameCandidate> candidates, string name)
+    {
+        for (var c = 0; c < candidates.Count; c++)
+        {
+            if (string.Equals(candidates[c].Name, name, StringComparison.Ordinal))
+            {
+                return c;
+            }
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Looks the current file up online and appends a confident match to its candidate
+    /// list. Returns the index to highlight, or -1 when nothing usable came back.
+    /// </summary>
+    private static async Task<int> AddOnlineCandidateAsync(
+        RenamePlanner planner,
+        LookupService lookup,
+        RenameAction action,
+        List<NameCandidate> candidates,
+        CancellationToken cancellationToken)
+    {
+        Console.WriteLine();
+        ConsoleUi.Muted("  Looking online...");
+
+        // Providers swallow their own network and parse failures, so this returns null
+        // rather than throwing when a catalogue is unreachable or has nothing confident.
+        var candidate = await planner.LookUpOnlineAsync(action, lookup, cancellationToken);
+        if (candidate is null)
+        {
+            ConsoleUi.Warn("  No confident match found online.");
+            ConsoleUi.Pause();
+            return -1;
+        }
+
+        // If that exact name is already listed, just point the highlight at it.
+        for (var c = 0; c < candidates.Count; c++)
+        {
+            if (string.Equals(candidates[c].Name, candidate.Name, StringComparison.Ordinal))
+            {
+                return c;
+            }
+        }
+
+        candidates.Add(candidate);
+        return candidates.Count - 1;
+    }
+
+    private static IReadOnlyList<NameCandidate> DisplayCandidates(RenameAction action) =>
+        action.Candidates.Count > 0
+            ? action.Candidates
+            : [new NameCandidate { Label = "keep current name", Name = action.OriginalName }];
+
+    private static void DrawReviewFile(
+        int position,
+        int total,
+        RenameAction action,
+        IReadOnlyList<NameCandidate> candidates,
+        int defaultIndex)
+    {
+        ConsoleUi.Section($"hand-review  {position} of {total}");
+
+        // The file under review, then each derived name with a note saying where it
+        // came from — all framed rows so the box stays closed like the other menus.
+        ConsoleUi.MenuNote(action.OriginalName);
+        ConsoleUi.MenuDivider();
+
+        for (var c = 0; c < candidates.Count; c++)
+        {
+            ConsoleUi.MenuChoice((c + 1).ToString(), candidates[c].Name, c == defaultIndex);
+            ConsoleUi.MenuNote(candidates[c].Label);
+        }
+
+        ConsoleUi.MenuDivider();
+        ConsoleUi.MenuItem("O", "Open the file in its default app");
+        ConsoleUi.MenuItem("L", "Look it up in the online catalogues");
+        ConsoleUi.MenuItem("E", "Type my own name");
+        ConsoleUi.MenuItem("S", "Skip - keep the current name");
+        ConsoleUi.MenuItem("Q", "Finish review now");
+        ConsoleUi.MenuNote("Up/Down pick a name  ·  Left/Right change file  ·  Enter = next");
+        ConsoleUi.Prompt("choose");
+    }
+
+    /// <summary>
+    /// Opens a file with whatever application the OS has associated with its type, so a
+    /// reviewer can see what it actually is before naming it. Failures are reported, not
+    /// thrown — a missing association must not derail the review.
+    /// </summary>
+    private static void OpenInDefaultViewer(string path)
+    {
+        try
+        {
+            // UseShellExecute lets the shell pick the registered viewer for the type.
+            using var process = Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException
+                                       or FileNotFoundException or PlatformNotSupportedException)
+        {
+            Console.WriteLine();
+            ConsoleUi.Error($"  Could not open the file: {ex.Message}");
+            ConsoleUi.Pause();
+        }
+    }
+
+    /// <summary>Prompts for a hand-typed name, returning the sanitised stem or null if cancelled.</summary>
+    private static string? PromptForCustomName(string originalName)
+    {
+        var extension = Path.GetExtension(originalName);
+
+        Console.WriteLine();
+        if (extension.Length > 0)
+        {
+            ConsoleUi.Muted($"  The {extension} extension is added for you.");
+        }
+
+        ConsoleUi.Write("  New name (blank to cancel): ", ConsoleColor.White);
+        var input = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return null;
+        }
+
+        var trimmed = input.Trim();
+
+        // Forgive a typed-in extension so it is not doubled.
+        if (extension.Length > 0 && trimmed.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed[..^extension.Length];
+        }
+
+        var safe = PathSafety.MakeSafeFileName(trimmed);
+        return safe.Length > 0 ? safe : null;
+    }
+
+    private static string BaseNameOf(string fileName) => Path.GetFileNameWithoutExtension(fileName);
+
+    /// <summary>Applies a plan, then offers the keep/revert choice while the list is on screen.</summary>
+    private void ApplyPlan(RenamePlan plan)
     {
         if (plan.ChangeCount == 0)
         {
             Console.WriteLine();
-            ConsoleUi.Muted("  Every file is already named correctly.");
-            ConsoleUi.Pause();
-            return;
-        }
-
-        ConsoleUi.Section("apply?");
-        ConsoleUi.MenuItem("A", $"Apply these {plan.ChangeCount} rename(s)");
-        ConsoleUi.MenuItem("B", "Back to the menu, change nothing");
-        ConsoleUi.Prompt("choose");
-
-        if (ConsoleUi.ReadChoice() != 'A')
-        {
-            Console.WriteLine();
-            ConsoleUi.Muted("  Nothing was changed.");
+            ConsoleUi.Muted("  Nothing to change.");
             ConsoleUi.Pause();
             return;
         }
@@ -491,10 +1023,10 @@ public sealed class InteractiveSession
         }
 
         // The revert offer belongs here, while the list is still on screen.
-        ConsoleUi.Section("happy with that?");
+        ConsoleUi.Section("Happy With That?");
         ConsoleUi.MenuItem("K", "Keep the new names");
         ConsoleUi.MenuItem("R", "Revert - put every file back");
-        ConsoleUi.Prompt("choose");
+        ConsoleUi.Prompt("Choose");
 
         if (ConsoleUi.ReadChoice() == 'R')
         {
@@ -522,7 +1054,7 @@ public sealed class InteractiveSession
     {
         if (_folder is null)
         {
-            ConsoleUi.Section("no folder yet");
+            ConsoleUi.Section("No Folder Yet");
             ConsoleUi.Warn("  Pick a folder first with [1].");
             ConsoleUi.Pause();
             return;
@@ -531,26 +1063,26 @@ public sealed class InteractiveSession
         var log = UndoLog.Load(_folder);
         if (log is null)
         {
-            ConsoleUi.Section("nothing to undo");
+            ConsoleUi.Section("Nothing to Undo");
             ConsoleUi.Warn($"  No previous run recorded in {_folder}.");
             ConsoleUi.Pause();
             return;
         }
 
-        ConsoleUi.Section($"undo {log.Entries.Count} rename(s) from {log.TimestampUtc.ToLocalTime():g}");
+        ConsoleUi.Section($"Undo {log.Entries.Count} rename(s) from {log.TimestampUtc.ToLocalTime():g}");
 
         foreach (var entry in log.Entries)
         {
             Console.Write("   ");
-            ConsoleUi.Write(entry.To, ConsoleColor.DarkGreen);
+            ConsoleUi.Write(entry.To, ConsoleColor.DarkYellow);
             ConsoleUi.Write("  ->  ", ConsoleColor.DarkGray);
             ConsoleUi.WriteLine(entry.From, ConsoleColor.Green);
         }
 
-        ConsoleUi.Section("confirm");
+        ConsoleUi.Section("Confirm");
         ConsoleUi.MenuItem("R", $"Revert all {log.Entries.Count}");
         ConsoleUi.MenuItem("B", "Back, change nothing");
-        ConsoleUi.Prompt("choose");
+        ConsoleUi.Prompt("Choose");
 
         if (ConsoleUi.ReadChoice() != 'R')
         {

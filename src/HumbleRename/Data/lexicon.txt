@@ -145,6 +145,32 @@ sandman = The Sandman
 trollbridge = Troll Bridge
 violentcases = Violent Cases
 
+# --- Image Comics Humble Bundle ---
+# Indie one-word and phrase titles the raw word frequencies get wrong:
+# "maestros" scores as "ma est ros", "westandonguard" as "west and on guard",
+# "shadecraft" as "shade craft". Pinning them settles the split deterministically.
+aintnograve = Ain't No Grave
+butcherbakertherighteousmaker = Butcher Baker, the Righteous Maker
+buzzkill = Buzzkill
+doapowerbomb = Do a Powerbomb
+eightbilliongenies = Eight Billion Genies
+frontiersman = Frontiersman
+grizgrobus = Griz Grobus
+maestros = Maestros
+meyouloveindark = Me You Love in the Dark
+ophiuchus = Ophiuchus
+rockstarandsoftboy = Rockstar and Softboy
+shadecraft = Shadecraft
+spaceoperaxanadaxacrosstheunknowndimensionsofthegalaxy = Space Opera Xanadax Across the Unknown Dimensions of the Galaxy
+westandonguard = We Stand on Guard
+youlldobadthings = You'll Do Bad Things
+# Leading "The" the run-together slug drops; both keys map to the full title so the
+# rendered form is still recognised as complete (see [titles] note above).
+theunchosen = The UnChosen
+unchosen = The UnChosen
+# "home_image" carries the publisher (Image) as a trailing export tag, not a subtitle.
+homeimage = Home
+
 # ---------------------------------------------------------------------------
 # [authors]  key = Proper Name
 #
@@ -168,6 +194,8 @@ edbrubaker = Ed Brubaker
 jefflemire = Jeff Lemire
 brandonsanderson = Brandon Sanderson
 terrypratchett = Terry Pratchett
+# Peels "Jack Kirby's" off "jackkirbyssilverstar" -> "Jack Kirby's Silver Star".
+jackkirby = Jack Kirby
 
 # ---------------------------------------------------------------------------
 # [words]
@@ -255,6 +283,10 @@ inhumans
 eternals
 klaus
 umbrella
+# Keep "genies" and the "dlxed" edition tag whole, so "eightbilliongeniesdlxed"
+# splits as "genies dlxed" and the deluxe marker can be lifted out (see [editions]).
+genies
+dlxed
 
 # ---------------------------------------------------------------------------
 # [uppercase]  tokens that are acronyms and must render in caps
@@ -375,6 +407,7 @@ bundle-file
 [editions]
 deluxeedition = Deluxe Edition
 deluxe = Deluxe Edition
+dlxed = Deluxe Edition
 absoluteedition = Absolute Edition
 collection = Collection
 completeedition = Complete Edition

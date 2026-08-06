@@ -48,6 +48,17 @@ public static class SplashScreen
         Dim, Bright, Bright, Bright, Bright, Dim,
     ];
 
+    /// <summary>The Ctrl-C sign-off, in the same block font as the logo.</summary>
+    private static readonly string[] Farewell =
+    [
+        @"██████╗ ██╗   ██╗███████╗██╗",
+        @"██╔══██╗╚██╗ ██╔╝██╔════╝██║",
+        @"██████╔╝ ╚████╔╝ █████╗  ██║",
+        @"██╔══██╗  ╚██╔╝  ██╔══╝  ╚═╝",
+        @"██████╔╝   ██║   ███████╗██╗",
+        @"╚═════╝    ╚═╝   ╚══════╝╚═╝",
+    ];
+
     public static void Show(string version)
     {
         TryClear();
@@ -94,6 +105,30 @@ public static class SplashScreen
         Wordmark("H U M B L E   R E N A M E R");
         Centered($"file liberation unit   //   release {version}", Bright);
         Bottom();
+    }
+
+    /// <summary>
+    /// The Ctrl-C exit screen: a framed block-letter sign-off. Kept self-contained and
+    /// allocation-light so it is safe to call straight from the
+    /// <see cref="Console.CancelKeyPress"/> handler, where the app may be torn down the
+    /// instant this returns.
+    /// </summary>
+    public static void ShowGoodbye()
+    {
+        Console.WriteLine();
+        var indent = (Inner - MaxWidth(Farewell)) / 2;
+
+        Top();
+        Blank();
+        for (var row = 0; row < Farewell.Length; row++)
+        {
+            LogoRow(Farewell[row], row % 2 == 0 ? Bright : Dim, indent);
+        }
+
+        Blank();
+        Centered("catch you on the flip side", Ghost);
+        Bottom();
+        Console.WriteLine();
     }
 
     // ── Frame pieces ────────────────────────────────────────────────────────

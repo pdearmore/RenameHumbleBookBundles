@@ -25,23 +25,18 @@ var usesSwitches = args.Any(static a => a.StartsWith('-'));
 
 if (!usesSwitches)
 {
-    using var menuCancellation = new CancellationTokenSource();
     Console.CancelKeyPress += (_, e) =>
     {
-        e.Cancel = true;
-        menuCancellation.Cancel();
+        // A menu blocked in Console.ReadKey never observes a cancellation token, so the
+        // sign-off has to happen in the handler itself — that is what makes Ctrl-C end
+        // the app instantly, wherever it is. Leaving e.Cancel false lets the runtime
+        // terminate the process the moment this returns.
+        SplashScreen.ShowGoodbye();
+        Console.Out.Flush();
     };
 
-    try
-    {
-        var session = new InteractiveSession(args.FirstOrDefault(), appVersion);
-        return await session.RunAsync(menuCancellation.Token);
-    }
-    catch (OperationCanceledException)
-    {
-        ConsoleUi.Warn("\n  Cancelled.");
-        return ExitError;
-    }
+    var session = new InteractiveSession(args.FirstOrDefault(), appVersion);
+    return await session.RunAsync(CancellationToken.None);
 }
 
 if (!CommandLineOptions.TryParse(args, out var options, out var parseError))

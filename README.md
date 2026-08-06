@@ -46,6 +46,7 @@ on-screen menus — there is nothing to memorise.
   ║ [5]  Read file metadata ······ Yes                                         ║
   ║ [6]  File types ·············· Comics and ebooks                           ║
   ║ [7]  Download cloud files ···· No                                          ║
+  ║ [8]  Comic Vine key ·········· Not set                                     ║
   ╟────────────────────────────────────────────────────────────────────────────╢
   ║ [S]  Scan and preview                                                      ║
   ║ [U]  Undo the last run in this folder                                      ║
@@ -55,10 +56,68 @@ on-screen menus — there is nothing to memorise.
   ░▒▓█▓▒ ▶
 ```
 
+Entry `[8]` is where you paste a Comic Vine key, or press `G` to open the free signup
+page in your browser. The nudge and `[8]`'s "Not set" both vanish once a key is present —
+either pasted here, or found in `HUMBLERENAMER_COMICVINE_KEY`.
+
+Every menu choice — the folder, name format, toggles, file types — is remembered between
+runs, so the tool opens where you left off. The settings live in
+`%LOCALAPPDATA%\HumbleRenamer\settings.json` (the Comic Vine key is kept separately and
+encrypted); a folder passed on the command line still wins over the remembered one.
+
 Drag a folder onto the exe to pre-fill entry `[1]`.
 
-Press `S` and it lists every file's current and proposed name, then asks before
-touching anything. Once applied it immediately offers to put everything back.
+Press `S` and it lists every file's current and proposed name, then offers three ways
+forward: save every rename, step through them by hand, or go back and change nothing.
+Once applied it immediately offers to put everything back.
+
+### Hand-review
+
+Choosing hand-review walks the files one at a time. For each, it shows every name it
+derived — from the filename, from the file's own metadata, from an online catalogue —
+and you pick one, type your own, or keep the current name, then it moves to the next.
+
+```
+  ╔══[ HAND-REVIEW  1 OF 68 ]══════════════════════════════════════════════════╗
+  ║        klikklikboom.pdf                                                    ║
+  ╟────────────────────────────────────────────────────────────────────────────╢
+  ║ > [1]  Klik Klik Boom - Cover - New.pdf                                    ║
+  ║        from file metadata                                                  ║
+  ║   [2]  Klik Klik Boom.pdf                                                  ║
+  ║        from filename                                                       ║
+  ║   [3]  klikklikboom.pdf                                                    ║
+  ║        keep current name                                                   ║
+  ╟────────────────────────────────────────────────────────────────────────────╢
+  ║ [O]  Open the file in its default app                                      ║
+  ║ [L]  Look it up in the online catalogues                                   ║
+  ║ [E]  Type my own name                                                      ║
+  ║ [S]  Skip - keep the current name                                          ║
+  ║ [Q]  Finish review now                                                     ║
+  ║        Up/Down pick a name  ·  Left/Right change file  ·  Enter = next     ║
+  ╚══[ CHOOSE ]════════════════════════════════════════════════════════════════╝
+  ░▒▓█▓▒ ▶
+```
+
+Move with the arrow keys: Up and Down move the highlight through the current file's
+options; Left and Right (or Enter for next) move between files, keeping whatever option
+is highlighted. A number also picks an option and moves on. Every file keeps its choice
+as you go back and forth, so nothing is lost, and `Q` finishes from wherever you are.
+
+Not sure what a file actually is? `O` opens it in whatever viewer the OS uses for that
+type — the PDF reader, the CBZ viewer — and leaves you on the same file to decide.
+
+`L` queries the catalogues for that one file on the spot and adds the best match as a
+new option, so you can reach for the network only on the handful you're unsure about
+rather than turning on lookup for the whole folder. It uses a Comic Vine key if you have
+one set, otherwise Open Library and Google Books, and says so if nothing confident comes
+back. (Unlike a batch `--online` run, this ignores the "is the local guess weak?" gate —
+you asked, so it always looks.)
+
+The highlighted `>` line is what a plain scan would have chosen; press Enter to take it.
+Between them, `L` and typing your own are how you overrule a bad guess — a production
+artefact an exporter left in the metadata, or a title the splitter got wrong — without
+teaching the lexicon anything. Every choice is still applied as one batch with a single
+undo, so `[U]` and the revert offer put the whole set back at once.
 
 ### Name formats
 
@@ -166,6 +225,13 @@ address and Comic Vine needs a free key. Either can be supplied by flag or envir
 $env:HUMBLERENAMER_COMICVINE_KEY    = 'your-key'   # much better for comics specifically
 $env:HUMBLERENAMER_GOOGLE_BOOKS_KEY = 'your-key'
 ```
+
+A Comic Vine key is free — create an account at <https://comicvine.gamespot.com/api/> and
+it is shown on that page. In the menus, entry `[8]` opens the signup page for you and lets
+you paste the key, so you don't have to set the environment variable at all. A pasted key
+is remembered between runs: it is encrypted for your Windows account (DPAPI) and stored at
+`%LOCALAPPDATA%\HumbleRenamer\comicvine.key` — never in plaintext, never in the app folder.
+`[8]` also clears it. The main menu nags gently until a key is found either way.
 
 Responses are cached in `%LOCALAPPDATA%\HumbleRenamer\lookup-cache.json`, including
 misses, so a second run over the same folder does not re-ask.

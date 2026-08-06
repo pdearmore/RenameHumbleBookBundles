@@ -219,6 +219,31 @@ public static class ConsoleUi
         return char.ToUpperInvariant(key.KeyChar);
     }
 
+    /// <summary>
+    /// Reads a full keypress, so callers can tell the arrow keys apart. Under redirected
+    /// input a line stands in: empty is Enter, and ',' / '.' stand in for the Left /
+    /// Right arrows so the hand-review flow stays scriptable in tests.
+    /// </summary>
+    public static ConsoleKeyInfo ReadKeyInfo()
+    {
+        if (!Console.IsInputRedirected)
+        {
+            return Console.ReadKey(intercept: true);
+        }
+
+        var line = Console.ReadLine();
+        if (line is null)
+        {
+            // End of scripted input: behave like "finish" so nothing spins.
+            return new ConsoleKeyInfo('Q', ConsoleKey.Q, false, false, false);
+        }
+
+        var trimmed = line.Trim();
+        return trimmed.Length == 0
+            ? new ConsoleKeyInfo('\r', ConsoleKey.Enter, false, false, false)
+            : new ConsoleKeyInfo(trimmed[0], default, false, false, false);
+    }
+
     // ── Frame geometry ──────────────────────────────────────────────────────
     // Every framed line is exactly 80 columns wide: a two-space gutter, a
     // vertical bar, 76 inner columns, and a closing bar. Rules, rows, and
@@ -278,8 +303,9 @@ public static class ConsoleUi
         Write(selected ? "> [" : "  [", selected ? Structural : Panel);
         Write(key, Action);
         Write("]  ", Panel);
-        Write(label, selected ? ConsoleColor.White : Body);
-        FrameRowEnd(6 + key.Length + label.Length); // "> [" + key + "]  " + label
+        var text = FitHead(label, MaxContent - 6 - key.Length); // "> [" + key + "]  "
+        Write(text, selected ? ConsoleColor.White : Body);
+        FrameRowEnd(6 + key.Length + text.Length);
     }
 
     /// <summary>A framed, dimmed sub-line indented to sit under a <see cref="MenuChoice"/> label.</summary>
@@ -288,8 +314,10 @@ public static class ConsoleUi
         const int indent = 7; // lands under the label column of MenuChoice
         FrameRowStart();
         Write(new string(' ', indent), Panel);
-        Write(text, ConsoleColor.DarkGray);
-        FrameRowEnd(indent + text.Length);
+        // Keep the tail so a truncated filename still shows its extension.
+        var shown = FitTail(text, MaxContent - indent);
+        Write(shown, ConsoleColor.DarkGray);
+        FrameRowEnd(indent + shown.Length);
     }
 
     /// <summary>Separates primary actions from configuration with a light inner shelf.</summary>
