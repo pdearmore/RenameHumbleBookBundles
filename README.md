@@ -247,6 +247,19 @@ dotnet run --project src\HumbleRename -- D:\Comics --dry-run
 .\build.ps1 -SkipTests
 ```
 
+### Testing the Linux build from Windows
+
+With WSL installed, build and run the self-contained Linux binary inside your default
+Ubuntu distribution:
+
+```powershell
+.\test-wsl.ps1
+```
+
+The script publishes `linux-x64`, stages the binary in WSL's temporary directory, and
+runs `--version` plus `--help`. Use `-Distribution <name>` to target a different WSL
+distribution, or `-SkipPublish` to rerun the smoke test against the previously built binary.
+
 Layout:
 
 | Path | Contents |
